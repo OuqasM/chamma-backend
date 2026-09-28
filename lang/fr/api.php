@@ -1,0 +1,98 @@
+<?php
+
+return [
+
+    'errors' => [
+        'not_found' => "Cette page n'existe pas.",
+        'unauthenticated' => 'Veuillez vous connecter.',
+        'forbidden' => "Vous n'avez pas accès à cette ressource.",
+        'product_unavailable' => "Ce produit n'est plus disponible.",
+        'insufficient_stock' => 'Stock insuffisant pour :product.',
+        'empty_cart' => 'Votre panier est vide.',
+        'payment_method_unavailable' => 'Ce mode de paiement n’est pas disponible.',
+        'city_not_deliverable' => 'Nous ne livrons pas encore dans cette ville. Choisissez une ville dans la liste.',
+        'login_failed' => 'E-mail ou mot de passe incorrect.',
+        'image_upload_failed' => "Le fichier image n'a pas pu être téléversé.",
+        'brand_in_use' => 'Impossible de supprimer cette marque : des produits y sont rattachés.\n',
+        'category_in_use' => 'Impossible de supprimer cette catégorie : des produits y sont rattachés.',
+        'order_closed' => 'Cette commande est déjà terminée : son statut ne peut plus être modifié.',
+        'image_type' => 'Le fichier doit être une image (JPEG, PNG, WebP ou SVG).',
+    ],
+
+    'store' => [
+        'tagline' => 'Parfums premium & essentiels beauté',
+        'nationwide' => 'Livraison partout au Maroc',
+        'cod' => 'Paiement à la livraison',
+        'order_confirmed' => 'Merci ! Votre commande :reference est confirmée.',
+    ],
+
+    'payment' => [
+        'cod' => 'Paiement à la livraison',
+        'bank_transfer' => 'Virement bancaire',
+        'cod_hint' => 'Vous payez le montant au livreur, à la réception du colis.',
+        'bank_transfer_hint' => 'Payez par virement, puis envoyez le reçu sur WhatsApp au :whatsapp en indiquant votre référence de commande.',
+        'bank_details' => 'Coordonnées bancaires',
+        'send_receipt' => 'Envoyer le reçu sur WhatsApp',
+        'receipt_message' => "Bonjour, je viens de passer la commande :reference (:amount MAD) pour :city. Voici mon reçu de virement :",
+    ],
+
+    'order_status' => [
+        'pending' => 'En attente',
+        'confirmed' => 'Confirmée',
+        'preparing' => 'En préparation',
+        'shipped' => 'Expédiée',
+        'delivered' => 'Livrée',
+        'cancelled' => 'Annulée',
+    ],
+
+    'validation' => [
+        'required' => 'Le champ :attribute est obligatoire.',
+        'email' => 'Le champ :attribute doit être une adresse e-mail valide.',
+        'phone' => 'Saisissez un numéro de téléphone marocain valide (ex. 0612345678).',
+        'min' => [
+            'string' => 'Le champ :attribute doit contenir au moins :min caractères.',
+            'numeric' => 'Le champ :attribute doit être au moins :min.',
+            'array' => 'Le champ :attribute doit contenir au moins :min éléments.',
+        ],
+        'max' => [
+            'string' => 'Le champ :attribute ne peut pas dépasser :max caractères.',
+            'numeric' => 'Le champ :attribute ne peut pas dépasser :max.',
+            'array' => 'Le champ :attribute ne peut pas dépasser :max éléments.',
+        ],
+        'numeric' => 'Le champ :attribute doit être un nombre.',
+        'integer' => 'Le champ :attribute doit être un entier.',
+        'boolean' => 'Le champ :attribute doit être vrai ou faux.',
+        'array' => 'Le champ :attribute doit être une liste.',
+        'exists' => 'La valeur sélectionnée pour :attribute est invalide.',
+        'unique' => 'Cette valeur de :attribute est déjà utilisée.',
+        'slug_unique' => 'Ce lien (slug) est déjà utilisé par un autre produit.',
+        'translations' => 'Chaque langue (fr, ar, en) doit être renseignée.',
+        'attributes' => [
+            'first_name' => 'Prénom',
+            'last_name' => 'Nom',
+            'phone' => 'Téléphone',
+            'email' => 'E-mail',
+            'city' => 'Ville',
+            'address' => 'Adresse',
+            'notes' => 'Instructions de livraison',
+            'payment_method' => 'Mode de paiement',
+            'quantity' => 'Quantité',
+            'product_id' => 'Produit',
+            'items' => 'Panier',
+            'sku' => 'Référence',
+            'price' => 'Prix',
+            'compare_at_price' => 'Prix barré',
+            'stock' => 'Stock',
+            'size' => 'Contenance',
+            'name' => 'Nom',
+            'customer_name' => 'Nom complet',
+            'slug' => 'Lien',
+            'logo' => 'Logo',
+            'image' => 'Image',
+            'status' => 'Statut',
+            'translations.*.name' => 'Nom du produit',
+            'translations.*.description' => 'Description',
+        ],
+    ],
+
+];

@@ -1,0 +1,23 @@
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.fleet
+/.idea
+/.vscode
+/node_modules
+/public/build
+/public/hot
+/public/storage
+# Stale host caches would register dev-only providers (e.g. laravel/pail) that
+# are absent from the --no-dev production install.
+/bootstrap/cache/*.php
+/storage/*.key
+/storage/pail
+/vendor
+.DS_Store
+Thumbs.db

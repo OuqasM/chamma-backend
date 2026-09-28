@@ -1,0 +1,98 @@
+<?php
+
+return [
+
+    'errors' => [
+        'not_found' => 'This page does not exist.',
+        'unauthenticated' => 'Please sign in to continue.',
+        'forbidden' => 'You do not have access to this resource.',
+        'product_unavailable' => 'This product is no longer available.',
+        'insufficient_stock' => 'Not enough stock for: :product.',
+        'empty_cart' => 'Your cart is empty.',
+        'payment_method_unavailable' => 'This payment method is not available.',
+        'city_not_deliverable' => 'We do not deliver to this city yet. Please pick a city from the list.',
+        'login_failed' => 'Incorrect email or password.',
+        'image_upload_failed' => 'The image could not be uploaded.',
+        'brand_in_use' => 'This brand cannot be deleted: products are still attached to it.',
+        'category_in_use' => 'This category cannot be deleted: products are still attached to it.',
+        'order_closed' => 'This order is already closed: its status can no longer be changed.',
+        'image_type' => 'The file must be an image (JPEG, PNG, WebP or SVG).',
+    ],
+
+    'store' => [
+        'tagline' => 'Premium perfumes & beauty essentials',
+        'nationwide' => 'Delivery across Morocco',
+        'cod' => 'Cash on delivery',
+        'order_confirmed' => 'Thank you! Your order :reference is confirmed.',
+    ],
+
+    'payment' => [
+        'cod' => 'Cash on delivery',
+        'bank_transfer' => 'Bank transfer',
+        'cod_hint' => 'You pay the courier in cash when the parcel arrives.',
+        'bank_transfer_hint' => 'Pay by bank transfer, then send the receipt on WhatsApp to :whatsapp, quoting your order reference.',
+        'bank_details' => 'Bank details',
+        'send_receipt' => 'Send the receipt on WhatsApp',
+        'receipt_message' => "Hello, I just placed order :reference (:amount MAD) for :city. Here is my bank transfer receipt:",
+    ],
+
+    'order_status' => [
+        'pending' => 'Pending',
+        'confirmed' => 'Confirmed',
+        'preparing' => 'Preparing',
+        'shipped' => 'Shipped',
+        'delivered' => 'Delivered',
+        'cancelled' => 'Cancelled',
+    ],
+
+    'validation' => [
+        'required' => 'The :attribute field is required.',
+        'email' => 'The :attribute field must be a valid email address.',
+        'phone' => 'Enter a valid Moroccan phone number (e.g. 0612345678).',
+        'min' => [
+            'string' => 'The :attribute field must be at least :min characters.',
+            'numeric' => 'The :attribute field must be at least :min.',
+            'array' => 'The :attribute field must have at least :min items.',
+        ],
+        'max' => [
+            'string' => 'The :attribute field may not be greater than :max characters.',
+            'numeric' => 'The :attribute field may not be greater than :max.',
+            'array' => 'The :attribute field may not have more than :max items.',
+        ],
+        'numeric' => 'The :attribute field must be a number.',
+        'integer' => 'The :attribute field must be an integer.',
+        'boolean' => 'The :attribute field must be true or false.',
+        'array' => 'The :attribute field must be a list.',
+        'exists' => 'The selected :attribute is invalid.',
+        'unique' => 'This :attribute is already taken.',
+        'slug_unique' => 'This slug is already used by another product.',
+        'translations' => 'Every language (fr, ar, en) must be provided.',
+        'attributes' => [
+            'first_name' => 'first name',
+            'last_name' => 'last name',
+            'phone' => 'phone',
+            'email' => 'email',
+            'city' => 'city',
+            'address' => 'address',
+            'notes' => 'delivery instructions',
+            'payment_method' => 'payment method',
+            'quantity' => 'quantity',
+            'product_id' => 'product',
+            'items' => 'cart',
+            'sku' => 'SKU',
+            'price' => 'price',
+            'compare_at_price' => 'compare-at price',
+            'stock' => 'stock',
+            'size' => 'size',
+            'name' => 'name',
+            'customer_name' => 'full name',
+            'slug' => 'slug',
+            'logo' => 'logo',
+            'image' => 'image',
+            'status' => 'status',
+            'translations.*.name' => 'product name',
+            'translations.*.description' => 'description',
+        ],
+    ],
+
+];

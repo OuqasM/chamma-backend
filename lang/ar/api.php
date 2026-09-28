@@ -1,0 +1,98 @@
+<?php
+
+return [
+
+    'errors' => [
+        'not_found' => 'هذه الصفحة غير موجودة.',
+        'unauthenticated' => 'يجب تسجيل الدخول للمتابعة.',
+        'forbidden' => 'ليس لديك صلاحية الوصول إلى هذه الصفحة.',
+        'product_unavailable' => 'هذا المنتج لم يعد متوفراً.',
+        'insufficient_stock' => 'الكمية المتوفرة من :product غير كافية.',
+        'empty_cart' => 'سلة التسوق فارغة.',
+        'payment_method_unavailable' => 'طريقة الدفع هذه غير متوفرة حالياً.',
+        'city_not_deliverable' => 'لا نوصل إلى هذه المدينة بعد. اختر مدينة من القائمة.',
+        'login_failed' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+        'image_upload_failed' => 'تعذّر رفع الصورة.',
+        'brand_in_use' => 'لا يمكن حذف هذه العلامة: لا تزال هناك منتجات مرتبطة بها.',
+        'category_in_use' => 'لا يمكن حذف هذه الفئة: لا تزال هناك منتجات مرتبطة بها.',
+        'order_closed' => 'هذه الطلب منتهية بالفعل: لا يمكن تغيير حالتها بعد الآن.',
+        'image_type' => 'يجب أن يكون الملف صورة (JPEG أو PNG أو WebP أو SVG).',
+    ],
+
+    'store' => [
+        'tagline' => 'عطور فاخرة ومنتجات تجميل أساسية',
+        'nationwide' => 'توصيل إلى جميع أنحاء المغرب',
+        'cod' => 'الدفع عند الاستلام',
+        'order_confirmed' => 'شكراً لك! تم تأكيد طلبك :reference.',
+    ],
+
+    'payment' => [
+        'cod' => 'الدفع عند الاستلام',
+        'bank_transfer' => 'تحويل بنكي',
+        'cod_hint' => 'تدفع المبلغ لمندوب التوصيل عند استلام الطرد.',
+        'bank_transfer_hint' => 'ادفع عبر تحويل بنكي، ثم أرسل الوصل عبر واتساب على الرقم :whatsapp مع ذكر مرجع طلبك.',
+        'bank_details' => 'المعلومات البنكية',
+        'send_receipt' => 'إرسال الوصل عبر واتساب',
+        'receipt_message' => "مرحباً،لقد أنشأت الطلب :reference (:amount درهم) إلى :city. إليك وصل التحويل البنكي:",
+    ],
+
+    'order_status' => [
+        'pending' => 'قيد الانتظار',
+        'confirmed' => 'تم التأكيد',
+        'preparing' => 'قيد التحضير',
+        'shipped' => 'تم الشحن',
+        'delivered' => 'تم التسليم',
+        'cancelled' => 'ملغاة',
+    ],
+
+    'validation' => [
+        'required' => 'حقل :attribute مطلوب.',
+        'email' => 'حقل :attribute يجب أن يكون بريداً إلكترونياً صحيحاً.',
+        'phone' => 'أدخل رقم هاتف مغربي صحيح (مثال: 0612345678).',
+        'min' => [
+            'string' => 'يجب أن يحتوي حقل :attribute على :min أحرف على الأقل.',
+            'numeric' => 'يجب ألا يقل حقل :attribute عن :min.',
+            'array' => 'يجب أن يحتوي حقل :attribute على :min عناصر على الأقل.',
+        ],
+        'max' => [
+            'string' => 'لا يمكن أن يتجاوز حقل :attribute عدد :max حرفاً.',
+            'numeric' => 'لا يمكن أن يتجاوز حقل :attribute :max.',
+            'array' => 'لا يمكن أن يحتوي حقل :attribute على أكثر من :max عناصر.',
+        ],
+        'numeric' => 'يجب أن يكون حقل :attribute رقماً.',
+        'integer' => 'يجب أن يكون حقل :attribute عدداً صحيحاً.',
+        'boolean' => 'يجب أن يكون حقل :attribute صحيحاً أو خاطئاً.',
+        'array' => 'يجب أن يكون حقل :attribute قائمة.',
+        'exists' => 'القيمة المحددة لحقل :attribute غير صحيحة.',
+        'unique' => 'قيمة حقل :attribute مستخدمة من قبل.',
+        'slug_unique' => 'هذا الرابط مستخدم من قبل منتج آخر.',
+        'translations' => 'يجب إدخال جميع اللغات (fr, ar, en).',
+        'attributes' => [
+            'first_name' => 'الاسم',
+            'last_name' => 'النسب',
+            'phone' => 'الهاتف',
+            'email' => 'البريد الإلكتروني',
+            'city' => 'المدينة',
+            'address' => 'العنوان',
+            'notes' => 'ملاحظات التوصيل',
+            'payment_method' => 'طريقة الدفع',
+            'quantity' => 'الكمية',
+            'product_id' => 'المنتج',
+            'items' => 'السلة',
+            'sku' => 'المرجع',
+            'price' => 'السعر',
+            'compare_at_price' => 'السعر قبل التخفيض',
+            'stock' => 'المخزون',
+            'size' => 'الحجم',
+            'name' => 'الاسم',
+            'customer_name' => 'الاسم الكامل',
+            'slug' => 'الرابط',
+            'logo' => 'الشعار',
+            'image' => 'الصورة',
+            'status' => 'الحالة',
+            'translations.*.name' => 'اسم المنتج',
+            'translations.*.description' => 'الوصف',
+        ],
+    ],
+
+];

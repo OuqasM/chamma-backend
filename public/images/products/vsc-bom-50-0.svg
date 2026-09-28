@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" width="1000" height="1250" role="img">
+<defs>
+  <linearGradient id="a04f9712ebg" x1="0" y1="0" x2="0.35" y2="1">
+    <stop offset="0" stop-color="#FBF1F2"/>
+    <stop offset="1" stop-color="#EBD2D5"/>
+  </linearGradient>
+  <radialGradient id="a04f9712eglow" cx="0.5" cy="0.32" r="0.62">
+    <stop offset="0" stop-color="#FFF9F9" stop-opacity="0.95"/>
+    <stop offset="1" stop-color="#FFF9F9" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="a04f9712eglass" x1="0" y1="0" x2="1" y2="0.2">
+    <stop offset="0" stop-color="#E9BFC4"/>
+    <stop offset="0.45" stop-color="#C98A93"/>
+    <stop offset="1" stop-color="#7F4550"/>
+  </linearGradient>
+  <linearGradient id="a04f9712efloor" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#EBD2D5" stop-opacity="0"/>
+    <stop offset="1" stop-color="#EBD2D5" stop-opacity="0.85"/>
+  </linearGradient>
+  <linearGradient id="a04f9712egold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0.00" stop-color="#F0DDB4"/><stop offset="0.33" stop-color="#D9B979"/><stop offset="0.67" stop-color="#C8A96A"/><stop offset="1.00" stop-color="#A8834B"/>
+  </linearGradient>
+  <linearGradient id="a04f9712espec" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+    <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.55"/>
+    <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+  </linearGradient>
+  <radialGradient id="a04f9712eshadow" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#7F4550" stop-opacity="0.42"/>
+    <stop offset="1" stop-color="#7F4550" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="a04f9712eblur" x="-30%" y="-60%" width="160%" height="220%">
+    <feGaussianBlur stdDeviation="18"/>
+  </filter>
+</defs><rect x="0" y="0" width="1000" height="1250" fill="url(#a04f9712ebg)"/><rect x="0" y="0" width="1000" height="1250" fill="url(#a04f9712eglow)"/><circle cx="760.0" cy="250.0" r="216.0" fill="none" stroke="#B08A5A" stroke-width="1.3" opacity="0.22"/><circle cx="220.0" cy="162.5" r="130.0" fill="none" stroke="#B08A5A" stroke-width="1" opacity="0.14"/><rect x="0" y="986" width="1000" height="264" fill="url(#a04f9712efloor)"/><ellipse cx="500.0" cy="1084.0" rx="210.0" ry="27.3" fill="url(#a04f9712eshadow)"/><g>
+  <rect x="456" y="516" width="88" height="76" rx="6" fill="#7F4550" opacity="0.9"/>
+  <path d="M352 646c0-24 20-43 47-51l54-19v-46h96v46l54 19c27 8 47 27 47 51v392c0 26-19 42-45 42H397c-26 0-45-16-45-42z" fill="url(#a04f9712eglass)"/>
+  <path d="M352 646c0-24 20-43 47-51l54-19v-46h96v46l54 19c27 8 47 27 47 51v392c0 26-19 42-45 42H397c-26 0-45-16-45-42z" fill="none" stroke="#7F4550" stroke-width="1.6" opacity="0.45"/>
+  <rect x="382" y="628" width="46" height="404" fill="url(#a04f9712espec)" opacity="0.5"/>
+  <path d="M600 620c14 4 24 12 24 26v388c0 18-9 28-22 32z" fill="#ffffff" opacity="0.16"/>
+  <rect x="392.0" y="758.0" width="216.0" height="196.0" rx="8" fill="#FDFBF7" opacity="0.93"/><rect x="400.0" y="766.0" width="200.0" height="180.0" rx="8" fill="none" stroke="#B08A5A" stroke-width="1.1" opacity="0.65"/><text x="500.0" y="844.2" text-anchor="middle" font-family="'Jost','Futura','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11.0" letter-spacing="0.6" fill="#4E2129">BOMBSHELL INTENSE</text><line x1="465.4" y1="867.8" x2="534.6" y2="867.8" stroke="#B08A5A" stroke-width="1" opacity="0.8"/><text x="500.0" y="910.9" text-anchor="middle" font-family="'Jost','Futura','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" letter-spacing="4" fill="#4E2129" opacity="0.78">50 ML</text>
+  <g>
+    <rect x="428" y="326" width="144" height="200" rx="12" fill="url(#a04f9712egold)"/>
+    <rect x="428" y="326" width="144" height="200" rx="12" fill="none" stroke="#8E6E3C" stroke-width="1" opacity="0.5"/>
+    <line x1="444" y1="342" x2="444" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="460" y1="342" x2="460" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="476" y1="342" x2="476" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="492" y1="342" x2="492" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="508" y1="342" x2="508" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="524" y1="342" x2="524" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="540" y1="342" x2="540" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="556" y1="342" x2="556" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="572" y1="342" x2="572" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/><line x1="588" y1="342" x2="588" y2="510" stroke="#8E6E3C" stroke-width="1.6" opacity="0.22"/>
+    <rect x="428" y="326" width="42" height="200" fill="#ffffff" opacity="0.2"/>
+  </g>
+</g><text x="500.0" y="1188" text-anchor="middle" font-family="'Jost','Futura','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30.0" letter-spacing="0.6" fill="#6B5B49">BOMBSHELL INTENSE</text><text x="500.0" y="1222" text-anchor="middle" font-family="'Jost','Futura','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="21.0" letter-spacing="7.0" fill="#9A8974">50 ML</text><line x1="440.0" y1="1154" x2="560.0" y2="1154" stroke="#C8A96A" stroke-width="1.2" opacity="0.75"/>
+</svg>
