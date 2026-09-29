@@ -117,6 +117,19 @@ class ProductController extends Controller
     }
 
     /**
+     * The other half of the pair: the product stays on the shelf, it is just
+     * labelled out of stock until it is switched back.
+     */
+    public function toggleAvailability(Product $product): JsonResponse
+    {
+        $product->update(['is_available' => ! $product->is_available]);
+
+        return response()->json([
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'category'])),
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function attributes(ProductRequest $request): array
@@ -124,7 +137,7 @@ class ProductController extends Controller
         $data = $request->safe()->only([
             'brand_id', 'category_id', 'sku', 'slug', 'price', 'cost_price',
             'compare_at_price', 'stock', 'size', 'gender', 'is_active',
-            'is_featured', 'is_new',
+            'is_available', 'is_featured', 'is_new',
         ]);
 
         $productId = $request->route('product')?->id;
@@ -139,7 +152,7 @@ class ProductController extends Controller
             }
         }
 
-        foreach (['is_active', 'is_featured', 'is_new'] as $flag) {
+        foreach (['is_active', 'is_available', 'is_featured', 'is_new'] as $flag) {
             // Coerce submitted checkboxes, but let the column default apply when
             // the admin says nothing, so a new product is not silently hidden.
             if ($request->exists($flag) && $request->input($flag) !== null) {

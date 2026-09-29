@@ -33,6 +33,7 @@ class Product extends Model
         'size',
         'gender',
         'is_active',
+        'is_available',
         'is_featured',
         'is_new',
     ];
@@ -42,6 +43,7 @@ class Product extends Model
         'compare_at_price' => 'decimal:2',
         'stock' => 'integer',
         'is_active' => 'boolean',
+        'is_available' => 'boolean',
         'is_featured' => 'boolean',
         'is_new' => 'boolean',
         'rating' => 'decimal:1',
@@ -74,6 +76,11 @@ class Product extends Model
         return $this->images->first();
     }
 
+    /**
+     * Whether the product is on the shelf at all. Independent of
+     * `is_available`: an unavailable product is still listed, an inactive one
+     * is not.
+     */
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -81,7 +88,7 @@ class Product extends Model
 
     public function scopeInStock(Builder $query): Builder
     {
-        return $query->where('stock', '>', 0);
+        return $query->where('is_available', true);
     }
 
     public function scopeFeatured(Builder $query): Builder
@@ -160,14 +167,19 @@ class Product extends Model
         return (int) round((1 - ((float) $this->price / (float) $this->compare_at_price)) * 100);
     }
 
+    /**
+     * What the storefront labels "out of stock", set by the admin rather than
+     * derived from the unit count, so a product can be paused for a restock
+     * without being unpublished. `stock` stays the plain quantity.
+     */
     public function getInStockAttribute(): bool
     {
-        return $this->stock > 0;
+        return (bool) $this->is_available;
     }
 
     public function getIsLowStockAttribute(): bool
     {
-        return $this->stock > 0 && $this->stock <= 3;
+        return $this->is_available && $this->stock > 0 && $this->stock <= 3;
     }
 
     /**

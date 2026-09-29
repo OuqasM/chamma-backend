@@ -42,12 +42,14 @@ class DashboardController extends Controller
                 [
                     // 1..3 only: sold out items are counted separately so the
                     // two numbers never overlap and double-report a product.
+                    // Both follow the storefront rule: a product the admin has
+                    // marked unavailable is sold out whatever its unit count.
                     'key' => 'low_stock',
-                    'value' => Product::query()->whereBetween('stock', [1, 3])->count(),
+                    'value' => Product::query()->where('is_available', true)->whereBetween('stock', [1, 3])->count(),
                 ],
                 [
                     'key' => 'out_of_stock',
-                    'value' => Product::query()->where('stock', 0)->count(),
+                    'value' => Product::query()->where('is_available', false)->count(),
                 ],
                 [
                     'key' => 'brands',

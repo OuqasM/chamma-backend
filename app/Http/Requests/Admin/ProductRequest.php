@@ -37,6 +37,9 @@ class ProductRequest extends FormRequest
             'size' => ['nullable', 'string', 'max:60'],
             'gender' => ['nullable', 'string', Rule::in(['women', 'men', 'unisex'])],
             'is_active' => ['nullable', 'boolean'],
+            // Independent of `is_active`: this one only drives the out-of-stock
+            // label, it does not hide the product.
+            'is_available' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
             'is_new' => ['nullable', 'boolean'],
             // `rating` / `rating_count` are no longer admin-editable. The columns
