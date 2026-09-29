@@ -18,6 +18,9 @@ class ProductController extends Controller
 {
     use HasSingleName;
 
+    /** Mirrors the `sku` column width, leaving room for a `-2` collision suffix. */
+    private const SKU_MAX = 60;
+
     public function __construct(private readonly ImageLibrary $images) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -124,6 +127,18 @@ class ProductController extends Controller
             'is_featured', 'is_new',
         ]);
 
+        $productId = $request->route('product')?->id;
+
+        // The admin form no longer has a reference field. On create, derive one
+        // from the name; on update, keep whatever the product already carries.
+        if (blank($data['sku'] ?? null)) {
+            unset($data['sku']);
+
+            if ($productId === null) {
+                $data['sku'] = $this->uniqueSku($request->validated()['name']);
+            }
+        }
+
         foreach (['is_active', 'is_featured', 'is_new'] as $flag) {
             // Coerce submitted checkboxes, but let the column default apply when
             // the admin says nothing, so a new product is not silently hidden.
@@ -139,7 +154,7 @@ class ProductController extends Controller
         // which is what a shopper would type, and only falls back to the SKU.
         $data['slug'] = $this->uniqueSlug(
             $data['slug'] ?? $request->validated()['name'] ?? $data['sku'],
-            $request->route('product')?->id,
+            $productId,
         );
 
         // These columns are NOT NULL with a default, and the request rules accept
@@ -152,6 +167,30 @@ class ProductController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * References stay ASCII, uppercase and stable, and are only ever generated.
+     *
+     * A name that transliterates to nothing (a purely non-Latin name) falls back
+     * to a random code. Soft-deleted rows are checked too: their reference still
+     * occupies the unique index, so reusing one would fail at the database.
+     */
+    private function uniqueSku(string $source, ?int $ignoreId = null): string
+    {
+        $base = Str::upper(Str::limit(Str::slug($source), self::SKU_MAX - 8, ''))
+            ?: 'CHAMMA-'.Str::upper(Str::random(6));
+        $sku = $base;
+        $suffix = 2;
+
+        while (Product::withTrashed()
+            ->where('sku', $sku)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()) {
+            $sku = $base.'-'.$suffix++;
+        }
+
+        return $sku;
     }
 
     /**
