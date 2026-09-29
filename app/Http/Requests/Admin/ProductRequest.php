@@ -18,7 +18,8 @@ class ProductRequest extends FormRequest
     public function rules(): array
     {
         $productId = $this->route('product')?->id;
-        return [
+
+        $rules = [
             'brand_id' => ['nullable', 'integer', 'exists:brands,id'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             // No longer admin-typed: the controller derives a unique one from the
@@ -44,10 +45,18 @@ class ProductRequest extends FormRequest
             // There is no per-language input any more: the copy is written once,
             // on the fallback translation row. Locales that were translated
             // before keep their own copy untouched.
+            //
+            // `description` / `short_description` are the single-language form,
+            // kept so an existing API client keeps working: they are written to
+            // the fallback row exactly as before. The admin form uses the
+            // per-locale `descriptions` / `short_descriptions` below instead.
             'description' => ['nullable', 'string'],
             'short_description' => ['nullable', 'string', 'max:300'],
             'meta_title' => ['nullable', 'string', 'max:200'],
             'meta_description' => ['nullable', 'string', 'max:300'],
+
+            'descriptions' => ['nullable', 'array'],
+            'short_descriptions' => ['nullable', 'array'],
 
             'images' => ['nullable', 'array', 'max:8'],
             'images.*' => ['string', 'max:255'],
@@ -62,6 +71,20 @@ class ProductRequest extends FormRequest
             'artwork.size' => ['nullable', 'string', 'max:60'],
             'artwork.label' => ['nullable', 'string', 'max:60'],
         ];
+
+        // One rule per configured language, so adding a language to
+        // config('chamma.locales') is all it takes for the admin to be able to
+        // write it. A key for a locale that is not configured is simply not in
+        // the rules, so the controller reading `validated()` never sees it and
+        // it cannot reach a translation row.
+        foreach (array_keys(config('chamma.locales')) as $locale) {
+            $rules["descriptions.{$locale}"] = ['nullable', 'string', 'max:20000'];
+            // Matches the varchar(300) width of the column; raising it needs a
+            // migration, not just a bigger limit here.
+            $rules["short_descriptions.{$locale}"] = ['nullable', 'string', 'max:300'];
+        }
+
+        return $rules;
     }
 
     /**

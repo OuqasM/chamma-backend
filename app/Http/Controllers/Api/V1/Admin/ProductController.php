@@ -213,12 +213,12 @@ class ProductController extends Controller
     }
 
     /**
-     * One name and one set of copy, written across the translation rows.
+     * One name, written across the translation rows, plus the copy for each
+     * language that was actually filled in.
      *
-     * Rows that already exist keep their own localized slug and any translated
-     * copy; only the fallback row receives what the admin typed. A brand-new
-     * product gets a row per language so every locale resolves, each with a slug
-     * derived from the name.
+     * Rows that already exist keep their own localized slug; only the fallback
+     * row receives the single-language copy. A brand-new product gets a row per
+     * language so every locale resolves, each with a slug derived from the name.
      */
     private function syncTranslations(Product $product, ProductRequest $request): void
     {
@@ -242,6 +242,44 @@ class ProductController extends Controller
         }
 
         $this->syncCanonicalCopy($product, $copy);
+
+        $this->syncLocalizedCopy($product, $request->validated());
+    }
+
+    /**
+     * Per-language copy, written to the row that actually serves that language.
+     *
+     * A locale is written only when the admin submitted a key for it, so a
+     * language left blank keeps whatever it already had, and a language cleared
+     * on purpose falls through to the others: `HasTranslations::translated()`
+     * treats an empty value as missing rather than as copy to show.
+     *
+     * Only configured locales are considered, so a stray key in the payload
+     * cannot create a translation row that no storefront URL would ever reach.
+     */
+    private function syncLocalizedCopy(Product $product, array $validated): void
+    {
+        $long = is_array($validated['descriptions'] ?? null) ? $validated['descriptions'] : [];
+        $short = is_array($validated['short_descriptions'] ?? null) ? $validated['short_descriptions'] : [];
+
+        foreach (array_keys(config('chamma.locales')) as $locale) {
+            $copy = [];
+
+            if (array_key_exists($locale, $long)) {
+                // NOT NULL: a cleared description is stored empty, not null.
+                $copy['description'] = is_string($long[$locale]) ? $long[$locale] : '';
+            }
+
+            if (array_key_exists($locale, $short)) {
+                $copy['short_description'] = is_string($short[$locale]) ? $short[$locale] : null;
+            }
+
+            if ($copy === []) {
+                continue;
+            }
+
+            $product->translations()->where('locale', $locale)->first()?->update($copy);
+        }
     }
 
     private function uniqueTranslationSlug(?string $slug, string $name, string $locale, int $productId): string

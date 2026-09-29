@@ -3,10 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Models\Product;
+use App\Support\Markdown;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Storefront representation of a product: already translated into the
@@ -18,14 +20,20 @@ class ProductResource extends JsonResource
     {
         $locale = App::getLocale();
         $image = $this->primaryImage();
+        $short = $this->translated('short_description', $locale);
+        $description = $this->description($locale);
 
         return [
             'id' => $this->id,
             'slug' => $this->slug($locale),
             'canonical_slug' => $this->slug,
             'name' => $this->name($locale),
-            'short_description' => $this->translated('short_description', $locale),
-            'description' => $this->description($locale),
+            // Raw markdown for the admin form and for anything that needs the
+            // source, alongside the rendered HTML the storefront displays.
+            'short_description' => $short,
+            'short_description_html' => Markdown::toHtml($short),
+            'description' => $description,
+            'description_html' => Markdown::toHtml($description),
             'sku' => $this->sku,
             'size' => $this->size,
             'gender' => $this->gender,
@@ -76,8 +84,10 @@ class ProductResource extends JsonResource
 
             'seo' => [
                 'title' => $this->translated('meta_title', $locale) ?: $this->name($locale),
+                // Rendered copy is reduced back to plain text, so markdown syntax
+                // never reaches the meta description.
                 'description' => $this->translated('meta_description', $locale)
-                    ?: \Illuminate\Support\Str::limit(strip_tags((string) $this->description($locale)), 160),
+                    ?: Str::limit(Markdown::toPlainText($description), 160),
             ],
         ];
     }
