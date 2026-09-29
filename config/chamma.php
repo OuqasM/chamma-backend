@@ -169,4 +169,21 @@ return [
         'max_price' => 5000,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Seeded admin
+    |--------------------------------------------------------------------------
+    |
+    | Read through config rather than env() in the seeder: env() returns null
+    | once `php artisan optimize` has cached the configuration, which would
+    | make seeding fail with "ADMIN_PASSWORD is not configured" on exactly the
+    | host where the password matters most.
+    |
+    */
+
+    'admin' => [
+        'email' => env('ADMIN_EMAIL', 'admin@chamaperfumes.ma'),
+        'password' => env('ADMIN_PASSWORD'),
+    ],
+
 ];

@@ -11,8 +11,8 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $email = env('ADMIN_EMAIL', 'admin@chamaperfumes.ma');
-        $password = env('ADMIN_PASSWORD');
+        $email = config('chamma.admin.email');
+        $password = config('chamma.admin.password');
 
         // The seeded admin is a live credential for the whole store, so this
         // never falls back to a default: a default that ends up in a public

@@ -9,8 +9,21 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(AdminUserSeeder::class);
+
+        // The catalogue and its orders exist so that local development has
+        // something realistic to look at. On a real host they would be
+        // invented products and invented customers sitting in the live
+        // database, so production stops here: the admin account is created and
+        // the store is filled through the admin panel.
+        if (app()->environment('production')) {
+            $this->command?->newLine();
+            $this->command?->info('Admin account seeded. The demo catalogue and its orders were skipped; add products through the admin panel.');
+
+            return;
+        }
+
         $this->call([
-            AdminUserSeeder::class,
             StoreCatalogSeeder::class,
             OrderSeeder::class,
         ]);
