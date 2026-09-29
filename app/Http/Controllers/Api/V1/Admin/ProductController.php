@@ -26,7 +26,7 @@ class ProductController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Product::query()
-            ->with(['translations', 'images', 'brand', 'category'])
+            ->with(['translations', 'images', 'brand', 'categories'])
             ->orderByDesc('updated_at');
 
         if ($search = trim((string) $request->query('search'))) {
@@ -38,7 +38,7 @@ class ProductController extends Controller
         }
 
         if ($request->filled('category')) {
-            $query->whereHas('category', fn ($q) => $q->where('slug', $request->query('category')));
+            $query->whereHas('categories', fn ($q) => $q->where('slug', $request->query('category')));
         }
 
         if ($request->has('active')) {
@@ -52,7 +52,7 @@ class ProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
-        $product->load(['translations', 'images', 'brand', 'category']);
+        $product->load(['translations', 'images', 'brand', 'categories']);
 
         return response()->json(['product' => new AdminProductResource($product)]);
     }
@@ -64,6 +64,7 @@ class ProductController extends Controller
 
             $this->syncTranslations($product, $request);
             $this->syncImages($product, $request, isNew: true);
+            $this->syncCategories($product, $request);
 
             return $product;
         });
@@ -73,7 +74,7 @@ class ProductController extends Controller
         $product->refresh();
 
         return response()->json([
-            'product' => new AdminProductResource($product->load(['translations', 'images', 'brand', 'category'])),
+            'product' => new AdminProductResource($product->load(['translations', 'images', 'brand', 'categories'])),
         ], 201);
     }
 
@@ -84,10 +85,11 @@ class ProductController extends Controller
 
             $this->syncTranslations($product, $request);
             $this->syncImages($product, $request);
+            $this->syncCategories($product, $request);
         });
 
         return response()->json([
-            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'category'])),
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
         ]);
     }
 
@@ -104,7 +106,7 @@ class ProductController extends Controller
         $model = Product::withTrashed()->findOrFail($product);
         $model->restore();
 
-        return response()->json(['product' => new AdminProductResource($model->load(['translations', 'images', 'brand', 'category']))]);
+        return response()->json(['product' => new AdminProductResource($model->load(['translations', 'images', 'brand', 'categories']))]);
     }
 
     public function toggle(Product $product): JsonResponse
@@ -112,7 +114,7 @@ class ProductController extends Controller
         $product->update(['is_active' => ! $product->is_active]);
 
         return response()->json([
-            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'category'])),
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
         ]);
     }
 
@@ -125,8 +127,26 @@ class ProductController extends Controller
         $product->update(['is_available' => ! $product->is_available]);
 
         return response()->json([
-            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'category'])),
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
         ]);
+    }
+
+    /**
+     * Categories live on a pivot, so they are replaced rather than written as a
+     * column.
+     *
+     * Only touched when the key is actually present. An admin bundle from
+     * before this change never sends `category_ids`, and syncing on its absence
+     * would quietly strip the categories off every product it saved while the
+     * two halves of a deploy were on different versions.
+     */
+    private function syncCategories(Product $product, ProductRequest $request): void
+    {
+        if (! $request->has('category_ids')) {
+            return;
+        }
+
+        $product->categories()->sync($request->validated('category_ids') ?? []);
     }
 
     /**
@@ -135,7 +155,7 @@ class ProductController extends Controller
     private function attributes(ProductRequest $request): array
     {
         $data = $request->safe()->only([
-            'brand_id', 'category_id', 'sku', 'slug', 'price', 'cost_price',
+            'brand_id', 'sku', 'slug', 'price', 'cost_price',
             'compare_at_price', 'stock', 'size', 'gender', 'is_active',
             'is_available', 'is_featured', 'is_new',
         ]);

@@ -41,7 +41,7 @@ class ProductController extends Controller
                 'translations',
                 'images',
                 'brand.translations',
-                'category.translations',
+                'categories.translations',
             ])
             ->firstOrFail();
 

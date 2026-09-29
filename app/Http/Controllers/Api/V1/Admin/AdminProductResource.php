@@ -37,7 +37,7 @@ class AdminProductResource extends JsonResource
             'deleted_at' => $this->deleted_at?->toIso8601String(),
 
             'brand_id' => $this->brand_id,
-            'category_id' => $this->category_id,
+            'category_ids' => $this->whenLoaded('categories', fn () => $this->categories->pluck('id')->values()),
 
             'brand' => $this->whenLoaded('brand', fn () => $this->brand ? [
                 'id' => $this->brand->id,
@@ -45,11 +45,11 @@ class AdminProductResource extends JsonResource
                 'slug' => $this->brand->slug,
             ] : null),
 
-            'category' => $this->whenLoaded('category', fn () => $this->category ? [
-                'id' => $this->category->id,
-                'name' => $this->category->name(App::getLocale()),
-                'slug' => $this->category->slug,
-            ] : null),
+            'categories' => $this->whenLoaded('categories', fn () => $this->categories->map(fn ($category) => [
+                'id' => $category->id,
+                'name' => $category->name(App::getLocale()),
+                'slug' => $category->slug,
+            ])->values()),
 
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($image) => [
                 'id' => $image->id,

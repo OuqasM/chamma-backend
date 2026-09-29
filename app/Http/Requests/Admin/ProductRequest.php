@@ -21,7 +21,8 @@ class ProductRequest extends FormRequest
 
         $rules = [
             'brand_id' => ['nullable', 'integer', 'exists:brands,id'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'category_ids' => ['nullable', 'array', 'max:20'],
+            'category_ids.*' => ['integer', 'distinct', 'exists:categories,id'],
             // No longer admin-typed: the controller derives a unique one from the
             // name so the merchant never has to invent a reference.
             'sku' => ['nullable', 'string', 'max:60', Rule::unique('products', 'sku')->ignore($productId)],

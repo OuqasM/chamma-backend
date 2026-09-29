@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -23,7 +24,6 @@ class Product extends Model
 
     protected $fillable = [
         'brand_id',
-        'category_id',
         'slug',
         'sku',
         'price',
@@ -56,9 +56,17 @@ class Product extends Model
         return $this->belongsTo(Brand::class);
     }
 
-    public function category(): BelongsTo
+    /**
+     * A product can sit in as many categories as it belongs in, so this is the
+     * pivot rather than a column. Ordered by the category's own position so the
+     * storefront has a stable order to show them in without a second sort key on
+     * the join table.
+     */
+    public function categories(): BelongsToMany
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsToMany(Category::class)
+            ->orderBy('categories.position')
+            ->orderBy('categories.id');
     }
 
     public function images(): HasMany
@@ -138,7 +146,7 @@ class Product extends Model
                         ->where('name', 'like', $like)
                     )
                 )
-                ->orWhereHas('category', fn ($c) => $c
+                ->orWhereHas('categories', fn ($c) => $c
                     ->where('categories.slug', 'like', $like)
                     ->orWhereHas('translations', fn ($t) => $t
                         ->whereIn('locale', $locales)

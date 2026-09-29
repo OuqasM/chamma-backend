@@ -60,10 +60,20 @@ class ProductResource extends JsonResource
                 'name' => $this->brand->name($locale),
             ] : null),
 
-            'category' => $this->whenLoaded('category', fn () => $this->category ? [
-                'id' => $this->category->id,
-                'slug' => $this->category->slug,
-                'name' => $this->category->name($locale),
+            // The storefront shows every category the product belongs in. The
+            // singular `category` alongside it is the first of that list, kept so
+            // an older bundle keeps rendering a breadcrumb while the two halves
+            // of a deploy are on different versions.
+            'categories' => $this->whenLoaded('categories', fn () => $this->categories->map(fn ($category) => [
+                'id' => $category->id,
+                'slug' => $category->slug,
+                'name' => $category->name($locale),
+            ])->values()),
+
+            'category' => $this->whenLoaded('categories', fn () => $this->categories->first() ? [
+                'id' => $this->categories->first()->id,
+                'slug' => $this->categories->first()->slug,
+                'name' => $this->categories->first()->name($locale),
             ] : null),
 
             'image' => $image ? [

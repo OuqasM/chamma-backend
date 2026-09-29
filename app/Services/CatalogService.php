@@ -53,7 +53,7 @@ class CatalogService
                 'translations',
                 'images',
                 'brand.translations',
-                'category.translations',
+                'categories.translations',
             ]);
 
         // `products.price` is already the payable amount: `compare_at_price`
@@ -71,7 +71,7 @@ class CatalogService
         }
 
         if ($this->filled($filters, 'category')) {
-            $query->whereHas('category', fn ($q) => $q
+            $query->whereHas('categories', fn ($q) => $q
                 ->where('categories.slug', $filters['category'])
                 ->orWhere('categories.id', $this->numeric($filters['category'] ?? null)));
         }
@@ -180,7 +180,7 @@ class CatalogService
     {
         return $constrain(
             Product::query()->active()->with([
-                'translations', 'images', 'brand.translations', 'category.translations',
+                'translations', 'images', 'brand.translations', 'categories.translations',
             ])
         )->take($limit)->get();
     }
@@ -197,12 +197,16 @@ class CatalogService
         return Product::query()
             ->active()
             ->where('products.id', '!=', $product->id)
-            ->with(['translations', 'images', 'brand.translations', 'category.translations'])
+            ->with(['translations', 'images', 'brand.translations', 'categories.translations'])
             ->where(function (Builder $q) use ($product) {
                 $q->where('brand_id', $product->brand_id);
 
-                if ($product->category_id) {
-                    $q->orWhere('category_id', $product->category_id);
+                $categoryIds = $product->categories()->pluck('categories.id');
+
+                // Any category in common, not just one: the product may sit in
+                // several and each of them is a reason to suggest a sibling.
+                if ($categoryIds->isNotEmpty()) {
+                    $q->orWhereHas('categories', fn ($c) => $c->whereIn('categories.id', $categoryIds));
                 }
             })
             ->orderByDesc('sales_count')

@@ -123,7 +123,6 @@ class StoreCatalogSeeder extends Seeder
                 ['sku' => $record['sku']],
                 [
                     'brand_id' => $brands->get($record['brand'])?->id,
-                    'category_id' => $categories->get($record['category'])?->id,
                     'slug' => $slug,
                     'price' => $record['price'],
                     'compare_at_price' => $record['compare_at'],
@@ -138,6 +137,12 @@ class StoreCatalogSeeder extends Seeder
                     'sales_count' => $record['sales'],
                 ],
             );
+
+            // Categories live on the pivot now. The sample data names a single
+            // one per product, so this attaches exactly that.
+            $categoryId = $categories->get($record['category'])?->id;
+
+            $product->categories()->sync($categoryId ? [$categoryId] : []);
 
             // Localised slug + copy.
             $seen = [];
