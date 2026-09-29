@@ -23,6 +23,16 @@
 # Product photos uploaded through the admin, backed up with the database
 # rather than in git (a single image runs to megabytes).
 /public/images/uploads
+
+# Storefront build output. The compiled app is not in this repository: it is
+# built from the frontend and copied into public/ on the host, where
+# routes/web.php serves it.
+/public/index.html
+/public/assets
+/public/hero
+/public/favicon.svg
+/public/chamma-store-logo.png
+/public/cih-virement-rib.jpg
 /storage/*.key
 /storage/pail
 /vendor

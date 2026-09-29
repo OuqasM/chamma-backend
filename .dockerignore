@@ -13,6 +13,16 @@ yarn-error.log
 /public/build
 /public/hot
 /public/storage
+
+# Storefront build copied in on the host. This image serves the API only and
+# must be built from the repository, never from a document root that happens to
+# contain a compiled frontend.
+/public/index.html
+/public/assets
+/public/hero
+/public/favicon.svg
+/public/chamma-store-logo.png
+/public/cih-virement-rib.jpg
 # Stale host caches would register dev-only providers (e.g. laravel/pail) that
 # are absent from the --no-dev production install.
 /bootstrap/cache/*.php
