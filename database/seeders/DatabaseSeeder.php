@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
         $this->seedEditorialArtwork();
 
         $this->command?->newLine();
-        $this->command?->info('Chamma Perfumes is ready. Storefront: http://localhost:5173');
+        $this->command?->info('Chamma Store is ready. Storefront: http://localhost:5173');
     }
 
     /**
