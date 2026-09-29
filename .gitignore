@@ -20,9 +20,13 @@
 /public/hot
 /public/storage
 
-# Product photos uploaded through the admin, backed up with the database
-# rather than in git (a single image runs to megabytes).
-/public/images/uploads
+# Storefront imagery. Nothing here is authored content: ImageLibrary generates
+# the product shots, category art, brand logos and editorial artwork on demand
+# (db:seed, or the first request that needs them), and admin photo uploads land
+# in uploads/. All of it is derived, so it is regenerated per host rather than
+# carried in the repository. Only the placeholder keeps the directory itself.
+/public/images/*
+!/public/images/.gitkeep
 
 # Storefront build output. The compiled app is not in this repository: it is
 # built from the frontend and copied into public/ on the host, where

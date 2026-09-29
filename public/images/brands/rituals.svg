@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200" role="img">
-<defs><linearGradient id="a54ab3d1dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0DDB4"/><stop offset="1" stop-color="#A8834B"/></linearGradient></defs><path d="M320 34 l9 9 -9 9 -9 -9 z" fill="#B08A5A"/><line x1="252" y1="46" x2="292" y2="46" stroke="#B08A5A" stroke-width="1.2"/><line x1="348" y1="46" x2="388" y2="46" stroke="#B08A5A" stroke-width="1.2"/><text x="320" y="128" text-anchor="middle" font-family="'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif" font-size="46.0" letter-spacing="8.0" fill="url(#a54ab3d1dg)">Rituals</text><line x1="272" y1="152" x2="368" y2="152" stroke="#B08A5A" stroke-width="1"/>
-</svg>
