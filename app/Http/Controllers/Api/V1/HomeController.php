@@ -43,9 +43,11 @@ class HomeController extends Controller
             'categories' => CategoryResource::collection(
                 $this->catalog->categories(onlyWithProducts: true)
             ),
-            'best_sellers' => ProductResource::collection($this->catalog->bestSellers(8, $locale)),
-            'new_arrivals' => ProductResource::collection($this->catalog->newArrivals(8, $locale)),
-            'offers' => ProductResource::collection($this->catalog->onOffer(8, $locale)),
+            // Four per shelf: each of these renders as a carousel, so a longer
+            // list means the shopper never sees the end of it without scrolling.
+            'best_sellers' => ProductResource::collection($this->catalog->bestSellers(4, $locale)),
+            'new_arrivals' => ProductResource::collection($this->catalog->newArrivals(4, $locale)),
+            'offers' => ProductResource::collection($this->catalog->onOffer(4, $locale)),
             'promises' => [
                 'nationwide' => __('api.store.nationwide', [], $locale),
                 'cod' => __('api.store.cod', [], $locale),

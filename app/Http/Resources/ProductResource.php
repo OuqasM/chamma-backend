@@ -51,7 +51,6 @@ class ProductResource extends JsonResource
             'rating' => (float) $this->rating,
             'rating_count' => (int) $this->rating_count,
             'sales_count' => (int) $this->sales_count,
-            'is_new' => (bool) $this->is_new,
             'is_featured' => (bool) $this->is_featured,
             'created_at' => $this->created_at?->toIso8601String(),
 

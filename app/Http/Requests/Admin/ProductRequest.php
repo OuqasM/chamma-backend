@@ -42,7 +42,6 @@ class ProductRequest extends FormRequest
             // label, it does not hide the product.
             'is_available' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
-            'is_new' => ['nullable', 'boolean'],
             // `rating` / `rating_count` are no longer admin-editable. The columns
             // stay and are still seeded and read by the storefront.
 

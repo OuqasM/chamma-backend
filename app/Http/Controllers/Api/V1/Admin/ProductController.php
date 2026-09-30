@@ -204,7 +204,7 @@ class ProductController extends Controller
         $data = $request->safe()->only([
             'brand_id', 'sku', 'slug', 'price', 'cost_price',
             'compare_at_price', 'stock', 'size', 'gender', 'is_active',
-            'is_available', 'is_featured', 'is_new',
+            'is_available', 'is_featured',
         ]);
 
         $productId = $request->route('product')?->id;
@@ -219,7 +219,7 @@ class ProductController extends Controller
             }
         }
 
-        foreach (['is_active', 'is_available', 'is_featured', 'is_new'] as $flag) {
+        foreach (['is_active', 'is_available', 'is_featured'] as $flag) {
             // Coerce submitted checkboxes, but let the column default apply when
             // the admin says nothing, so a new product is not silently hidden.
             if ($request->exists($flag) && $request->input($flag) !== null) {

@@ -30,7 +30,6 @@ class AdminProductResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'is_available' => (bool) $this->is_available,
             'is_featured' => (bool) $this->is_featured,
-            'is_new' => (bool) $this->is_new,
             'rating' => (float) $this->rating,
             'rating_count' => (int) $this->rating_count,
             'sales_count' => (int) $this->sales_count,

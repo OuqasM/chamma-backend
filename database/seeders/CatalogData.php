@@ -217,7 +217,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'gift-sets', 'gender' => 'unisex',
                 'sku' => 'RIT-SAM-100', 'size' => '3x100 ML', 'price' => 899, 'compare_at' => 1150,
-                'stock' => 14, 'featured' => true, 'new' => false, 'rating' => 4.8, 'rating_count' => 213,
+                'stock' => 14, 'featured' => true, 'rating' => 4.8, 'rating_count' => 213,
                 'sales' => 640, 'shape' => 'carton', 'tone' => 'espresso',
                 'names' => [
                     'fr' => 'Coffret Samovar Rituals',
@@ -238,7 +238,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'perfumes', 'gender' => 'unisex',
                 'sku' => 'RIT-AGUA-100', 'size' => '100 ML', 'price' => 349, 'compare_at' => null,
-                'stock' => 38, 'featured' => true, 'new' => false, 'rating' => 4.6, 'rating_count' => 154,
+                'stock' => 38, 'featured' => true, 'rating' => 4.6, 'rating_count' => 154,
                 'sales' => 512, 'shape' => 'flacon', 'tone' => 'jade',
                 'names' => [
                     'fr' => 'Agua de Rituals',
@@ -259,7 +259,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'body-care', 'gender' => 'women',
                 'sku' => 'RIT-SAK-CRM', 'size' => '200 ML', 'price' => 249, 'compare_at' => 299,
-                'stock' => 56, 'featured' => false, 'new' => false, 'rating' => 4.5, 'rating_count' => 98,
+                'stock' => 56, 'featured' => false, 'rating' => 4.5, 'rating_count' => 98,
                 'sales' => 388, 'shape' => 'jar', 'tone' => 'blush',
                 'names' => [
                     'fr' => 'Crème corps Sakura',
@@ -280,7 +280,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'perfumes', 'gender' => 'unisex',
                 'sku' => 'RIT-PRV-100', 'size' => '100 ML', 'price' => 649, 'compare_at' => 749,
-                'stock' => 22, 'featured' => true, 'new' => true, 'rating' => 4.7, 'rating_count' => 61,
+                'stock' => 22, 'featured' => true, 'rating' => 4.7, 'rating_count' => 61,
                 'sales' => 176, 'shape' => 'flacon', 'tone' => 'plum',
                 'names' => [
                     'fr' => 'Private Collection',
@@ -301,7 +301,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'shower-bath', 'gender' => 'unisex',
                 'sku' => 'RIT-HAM-200', 'size' => '200 ML', 'price' => 149, 'compare_at' => null,
-                'stock' => 74, 'featured' => false, 'new' => false, 'rating' => 4.4, 'rating_count' => 76,
+                'stock' => 74, 'featured' => false, 'rating' => 4.4, 'rating_count' => 76,
                 'sales' => 301, 'shape' => 'tube', 'tone' => 'jade',
                 'names' => [
                     'fr' => 'Gel douche Hammam',
@@ -322,7 +322,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'perfumes', 'gender' => 'men',
                 'sku' => 'RIT-DES-50', 'size' => '50 ML', 'price' => 699, 'compare_at' => null,
-                'stock' => 17, 'featured' => false, 'new' => true, 'rating' => 4.9, 'rating_count' => 34,
+                'stock' => 17, 'featured' => false, 'rating' => 4.9, 'rating_count' => 34,
                 'sales' => 92, 'shape' => 'flacon', 'tone' => 'amber',
                 'names' => [
                     'fr' => 'Desert Bloom',
@@ -343,7 +343,7 @@ final class CatalogData
             [
                 'brand' => 'rituals', 'category' => 'shower-bath', 'gender' => 'unisex',
                 'sku' => 'RIT-MIL-200', 'size' => '200 ML', 'price' => 139, 'compare_at' => 169,
-                'stock' => 0, 'featured' => false, 'new' => false, 'rating' => 4.3, 'rating_count' => 45,
+                'stock' => 0, 'featured' => false, 'rating' => 4.3, 'rating_count' => 45,
                 'sales' => 262, 'shape' => 'tube', 'tone' => 'ivory',
                 'names' => [
                     'fr' => 'Gel douche Milky',
@@ -366,7 +366,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'perfumes', 'gender' => 'unisex',
                 'sku' => 'IBR-OUD-12', 'size' => '12 ML', 'price' => 1290, 'compare_at' => 1490,
-                'stock' => 9, 'featured' => true, 'new' => false, 'rating' => 4.9, 'rating_count' => 128,
+                'stock' => 9, 'featured' => true, 'rating' => 4.9, 'rating_count' => 128,
                 'sales' => 214, 'shape' => 'dropper', 'tone' => 'espresso',
                 'names' => [
                     'fr' => 'Oud Royale',
@@ -387,7 +387,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'perfumes', 'gender' => 'unisex',
                 'sku' => 'IBR-MUS-12', 'size' => '12 ML', 'price' => 749, 'compare_at' => null,
-                'stock' => 26, 'featured' => false, 'new' => false, 'rating' => 4.7, 'rating_count' => 87,
+                'stock' => 26, 'featured' => false, 'rating' => 4.7, 'rating_count' => 87,
                 'sales' => 198, 'shape' => 'dropper', 'tone' => 'ivory',
                 'names' => [
                     'fr' => 'Musk Al Tahara',
@@ -408,7 +408,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'body-mist', 'gender' => 'unisex',
                 'sku' => 'IBR-BAK-100', 'size' => '100 ML', 'price' => 229, 'compare_at' => null,
-                'stock' => 43, 'featured' => false, 'new' => false, 'rating' => 4.5, 'rating_count' => 52,
+                'stock' => 43, 'featured' => false, 'rating' => 4.5, 'rating_count' => 52,
                 'sales' => 176, 'shape' => 'mist', 'tone' => 'amber',
                 'names' => [
                     'fr' => 'Brume Bakhoor',
@@ -429,7 +429,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'body-care', 'gender' => 'women',
                 'sku' => 'IBR-LOT-200', 'size' => '200 ML', 'price' => 199, 'compare_at' => 239,
-                'stock' => 61, 'featured' => false, 'new' => false, 'rating' => 4.4, 'rating_count' => 71,
+                'stock' => 61, 'featured' => false, 'rating' => 4.4, 'rating_count' => 71,
                 'sales' => 231, 'shape' => 'tube', 'tone' => 'plum',
                 'names' => [
                     'fr' => 'Lait corporel Ambre',
@@ -450,7 +450,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'perfumes', 'gender' => 'unisex',
                 'sku' => 'IBR-ATT-3', 'size' => '3 ML', 'price' => 1990, 'compare_at' => null,
-                'stock' => 5, 'featured' => true, 'new' => false, 'rating' => 5.0, 'rating_count' => 42,
+                'stock' => 5, 'featured' => true, 'rating' => 5.0, 'rating_count' => 42,
                 'sales' => 118, 'shape' => 'dropper', 'tone' => 'amber',
                 'names' => [
                     'fr' => 'Attar royal 3 ml',
@@ -471,7 +471,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'body-mist', 'gender' => 'women',
                 'sku' => 'IBR-ROS-250', 'size' => '250 ML', 'price' => 129, 'compare_at' => null,
-                'stock' => 88, 'featured' => false, 'new' => false, 'rating' => 4.6, 'rating_count' => 93,
+                'stock' => 88, 'featured' => false, 'rating' => 4.6, 'rating_count' => 93,
                 'sales' => 402, 'shape' => 'mist', 'tone' => 'rose',
                 'names' => [
                     'fr' => 'Eau de rose',
@@ -492,7 +492,7 @@ final class CatalogData
             [
                 'brand' => 'ibraq', 'category' => 'gift-sets', 'gender' => 'unisex',
                 'sku' => 'IBR-DIS-4', 'size' => '4 pièces', 'price' => 549, 'compare_at' => 699,
-                'stock' => 31, 'featured' => false, 'new' => true, 'rating' => 4.8, 'rating_count' => 66,
+                'stock' => 31, 'featured' => false, 'rating' => 4.8, 'rating_count' => 66,
                 'sales' => 155, 'shape' => 'carton', 'tone' => 'noir',
                 'names' => [
                     'fr' => 'Coffret découverte Ibraq',
@@ -515,7 +515,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'perfumes', 'gender' => 'women',
                 'sku' => 'VSC-BOM-50', 'size' => '50 ML', 'price' => 679, 'compare_at' => 799,
-                'stock' => 29, 'featured' => true, 'new' => false, 'rating' => 4.7, 'rating_count' => 302,
+                'stock' => 29, 'featured' => true, 'rating' => 4.7, 'rating_count' => 302,
                 'sales' => 871, 'shape' => 'flacon', 'tone' => 'rose',
                 'names' => [
                     'fr' => 'Bombshell Intense',
@@ -536,7 +536,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'perfumes', 'gender' => 'women',
                 'sku' => 'VSC-VSX-50', 'size' => '50 ML', 'price' => 649, 'compare_at' => null,
-                'stock' => 21, 'featured' => false, 'new' => false, 'rating' => 4.5, 'rating_count' => 188,
+                'stock' => 21, 'featured' => false, 'rating' => 4.5, 'rating_count' => 188,
                 'sales' => 604, 'shape' => 'flacon', 'tone' => 'blush',
                 'names' => [
                     'fr' => 'Very Sexy',
@@ -557,7 +557,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'body-mist', 'gender' => 'women',
                 'sku' => 'VSC-PUR-250', 'size' => '250 ML', 'price' => 249, 'compare_at' => null,
-                'stock' => 67, 'featured' => false, 'new' => false, 'rating' => 4.6, 'rating_count' => 145,
+                'stock' => 67, 'featured' => false, 'rating' => 4.6, 'rating_count' => 145,
                 'sales' => 522, 'shape' => 'mist', 'tone' => 'ivory',
                 'names' => [
                     'fr' => 'PURE',
@@ -578,7 +578,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'perfumes', 'gender' => 'women',
                 'sku' => 'VSC-VSW-50', 'size' => '50 ML', 'price' => 599, 'compare_at' => 749,
-                'stock' => 34, 'featured' => true, 'new' => true, 'rating' => 4.8, 'rating_count' => 119,
+                'stock' => 34, 'featured' => true, 'rating' => 4.8, 'rating_count' => 119,
                 'sales' => 287, 'shape' => 'flacon', 'tone' => 'blush',
                 'names' => [
                     'fr' => 'Vanilla Swirl',
@@ -599,7 +599,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'perfumes', 'gender' => 'women',
                 'sku' => 'VSC-LOV-100', 'size' => '100 ML', 'price' => 699, 'compare_at' => null,
-                'stock' => 18, 'featured' => false, 'new' => false, 'rating' => 4.4, 'rating_count' => 97,
+                'stock' => 18, 'featured' => false, 'rating' => 4.4, 'rating_count' => 97,
                 'sales' => 243, 'shape' => 'flacon', 'tone' => 'plum',
                 'names' => [
                     'fr' => 'Love Addict',
@@ -620,7 +620,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'body-mist', 'gender' => 'women',
                 'sku' => 'VSC-MID-250', 'size' => '250 ML', 'price' => 289, 'compare_at' => 349,
-                'stock' => 0, 'featured' => false, 'new' => false, 'rating' => 4.5, 'rating_count' => 84,
+                'stock' => 0, 'featured' => false, 'rating' => 4.5, 'rating_count' => 84,
                 'sales' => 319, 'shape' => 'mist', 'tone' => 'plum',
                 'names' => [
                     'fr' => 'Midnight Ambrosia',
@@ -641,7 +641,7 @@ final class CatalogData
             [
                 'brand' => 'vs', 'category' => 'body-care', 'gender' => 'women',
                 'sku' => 'VSC-PIN-300', 'size' => '300 ML', 'price' => 379, 'compare_at' => null,
-                'stock' => 47, 'featured' => false, 'new' => false, 'rating' => 4.7, 'rating_count' => 76,
+                'stock' => 47, 'featured' => false, 'rating' => 4.7, 'rating_count' => 76,
                 'sales' => 258, 'shape' => 'jar', 'tone' => 'rose',
                 'names' => [
                     'fr' => 'Crème PINK Satin',

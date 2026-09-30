@@ -93,22 +93,11 @@ class ProductController extends Controller
             }
         }
 
-        foreach (['on_sale', 'in_stock', 'new', 'featured'] as $flag) {
+        foreach (['on_sale', 'in_stock', 'featured'] as $flag) {
             $value = $request->query($flag);
 
             if ($value !== null) {
                 $filters[$flag] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
-            }
-        }
-
-        // The storefront, the /new redirect and the documented API contract all
-        // send `is_new`, while CatalogService reads `new`. Accept either and
-        // normalise, so the filter is not silently dropped.
-        if (! array_key_exists('new', $filters)) {
-            $value = $request->query('is_new');
-
-            if ($value !== null) {
-                $filters['new'] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
             }
         }
 

@@ -35,7 +35,6 @@ class Product extends Model
         'is_active',
         'is_available',
         'is_featured',
-        'is_new',
     ];
 
     protected $casts = [
@@ -45,7 +44,6 @@ class Product extends Model
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'is_featured' => 'boolean',
-        'is_new' => 'boolean',
         'rating' => 'decimal:1',
         'rating_count' => 'integer',
         'sales_count' => 'integer',
@@ -102,13 +100,6 @@ class Product extends Model
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
-    }
-
-    public function scopeNewArrivals(Builder $query): Builder
-    {
-        return $query->where(function (Builder $q) {
-            $q->where('is_new', true)->orWhere('created_at', '>=', now()->subDays(45));
-        });
     }
 
     public function scopeDiscounted(Builder $query): Builder

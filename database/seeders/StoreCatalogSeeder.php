@@ -131,7 +131,6 @@ class StoreCatalogSeeder extends Seeder
                     'gender' => $record['gender'],
                     'is_active' => true,
                     'is_featured' => $record['featured'],
-                    'is_new' => $record['new'],
                     'rating' => $record['rating'],
                     'rating_count' => $record['rating_count'],
                     'sales_count' => $record['sales'],

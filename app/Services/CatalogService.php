@@ -98,10 +98,6 @@ class CatalogService
             $query->search((string) $filters['search']);
         }
 
-        if ($this->filled($filters, 'new') && $filters['new']) {
-            $query->newArrivals();
-        }
-
         if ($this->filled($filters, 'featured') && $filters['featured']) {
             $query->featured();
         }
@@ -149,11 +145,31 @@ class CatalogService
     }
 
     /**
+     * Newest first, by creation date.
+     *
+     * This used to be a filter over a hand-ticked `is_new` column OR'd with a
+     * 45-day window, which meant the two halves disagreed and the flag was the
+     * weaker one. Ordering by `created_at` alone is the same intention, needs no
+     * upkeep, and cannot go stale.
+     *
+     * `id` breaks ties because `created_at` has one-second granularity, and SQL
+     * promises no order among equal keys. Both SQLite and InnoDB happen to
+     * already return ties id-descending, because a secondary index carries the
+     * row id and the scan runs backwards — so this clause is belt-and-braces
+     * against that coincidence rather than a fix for an observed bug. Kept
+     * because "the 4 newest" should not depend on a storage engine's internals,
+     * and HomeShelvesTest pins the contract even though it cannot prove this
+     * clause is load-bearing.
+     *
      * @return Collection<int, Product>
      */
     public function newArrivals(int $limit = 8, ?string $locale = null): Collection
     {
-        return $this->shelf($locale, fn (Builder $q) => $q->newArrivals()->orderByDesc('created_at'), $limit);
+        return $this->shelf(
+            $locale,
+            fn (Builder $q) => $q->orderByDesc('products.created_at')->orderByDesc('products.id'),
+            $limit
+        );
     }
 
     /**
@@ -161,7 +177,14 @@ class CatalogService
      */
     public function bestSellers(int $limit = 8, ?string $locale = null): Collection
     {
-        return $this->shelf($locale, fn (Builder $q) => $q->orderByDesc('sales_count'), $limit);
+        // `id` tie-break for the same reason as newArrivals. It matters more
+        // here: every product that has never sold shares `sales_count = 0`, so
+        // in a young catalogue the whole shelf is one enormous tie.
+        return $this->shelf(
+            $locale,
+            fn (Builder $q) => $q->orderByDesc('sales_count')->orderByDesc('products.id'),
+            $limit
+        );
     }
 
     /**
@@ -169,7 +192,11 @@ class CatalogService
      */
     public function onOffer(int $limit = 8, ?string $locale = null): Collection
     {
-        return $this->shelf($locale, fn (Builder $q) => $q->discounted()->orderByDesc('sales_count'), $limit);
+        return $this->shelf(
+            $locale,
+            fn (Builder $q) => $q->discounted()->orderByDesc('sales_count')->orderByDesc('products.id'),
+            $limit
+        );
     }
 
     /**
