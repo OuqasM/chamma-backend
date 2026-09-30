@@ -49,6 +49,8 @@ return [
         'required' => 'The :attribute field is required.',
         'email' => 'The :attribute field must be a valid email address.',
         'phone' => 'Enter a valid Moroccan phone number (e.g. 0612345678).',
+        'phone_required' => 'Enter your phone number so we can tell you when it is back in stock.',
+        'waitlist_selection_required' => 'Select at least one person, or a product, to mark as contacted.',
         'min' => [
             'string' => 'The :attribute field must be at least :min characters.',
             'numeric' => 'The :attribute field must be at least :min.',

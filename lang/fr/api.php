@@ -49,6 +49,8 @@ return [
         'required' => 'Le champ :attribute est obligatoire.',
         'email' => 'Le champ :attribute doit être une adresse e-mail valide.',
         'phone' => 'Saisissez un numéro de téléphone marocain valide (ex. 0612345678).',
+        'phone_required' => 'Saisissez votre numéro de téléphone pour être prévenu du retour en stock.',
+        'waitlist_selection_required' => 'Sélectionnez au moins une personne ou un produit à marquer.',
         'min' => [
             'string' => 'Le champ :attribute doit contenir au moins :min caractères.',
             'numeric' => 'Le champ :attribute doit être au moins :min.',

@@ -29,4 +29,17 @@ return [
         'footer' => 'Vous recevez ce message car les alertes de commande sont activées dans le back-office.',
     ],
 
+    'restock' => [
+        'subject' => 'De retour en stock : :name (:count)',
+        'greeting' => 'Un produit que des clients attendaient est de retour',
+        'intro' => 'Ils se sont inscrits sur la page du produit pour être prévenus. Appelez-les, ou ouvrez la conversation directement.',
+        'product' => 'Produit',
+        'price' => 'Prix',
+        'waiters' => 'Personnes à prévenir',
+        'waiting_since' => 'Inscrit le',
+        'call' => 'Écrire sur WhatsApp',
+        'view' => 'Voir sur la boutique',
+        'open' => 'Ouvrir la liste d’attente dans le back-office',
+        'footer' => 'Vous recevez ce message car les alertes de stock sont activées dans le back-office.',
+    ],
 ];

@@ -8,6 +8,8 @@ use App\Http\Requests\Admin\ProductRequest;
 use App\Models\Product;
 use App\Models\ProductTranslation;
 use App\Services\ImageLibrary;
+use App\Services\RestockNotifier;
+use App\Services\WaitlistService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,7 +23,11 @@ class ProductController extends Controller
     /** Mirrors the `sku` column width, leaving room for a `-2` collision suffix. */
     private const SKU_MAX = 60;
 
-    public function __construct(private readonly ImageLibrary $images) {}
+    public function __construct(
+        private readonly ImageLibrary $images,
+        private readonly WaitlistService $waitlist,
+        private readonly RestockNotifier $restockNotifier,
+    ) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -80,6 +86,10 @@ class ProductController extends Controller
 
     public function update(ProductRequest $request, Product $product): JsonResponse
     {
+        // Read before the write: whether this save is a restock depends on the
+        // value that is about to be replaced.
+        $wasAvailable = $product->in_stock;
+
         DB::transaction(function () use ($request, $product) {
             $product->update($this->attributes($request));
 
@@ -87,6 +97,8 @@ class ProductController extends Controller
             $this->syncImages($product, $request);
             $this->syncCategories($product, $request);
         });
+
+        $this->announceRestock($product, $wasAvailable);
 
         return response()->json([
             'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
@@ -124,11 +136,46 @@ class ProductController extends Controller
      */
     public function toggleAvailability(Product $product): JsonResponse
     {
+        $wasAvailable = $product->in_stock;
+
         $product->update(['is_available' => ! $product->is_available]);
+
+        $this->announceRestock($product, $wasAvailable);
 
         return response()->json([
             'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
         ]);
+    }
+
+    /**
+     * Tell the owner that people were waiting on this, the moment it became
+     * buyable again.
+     *
+     * Fires only on the unavailable -> available edge, not on every save of an
+     * available product. Re-pricing a perfume that was never unavailable should
+     * not re-send the same numbers, and an admin editing a product's description
+     * once a week would otherwise turn into a weekly email to every customer on
+     * the list.
+     *
+     * Uses `defer` for the same reason the order alert does: this runs after an
+     * admin action has already been committed, so a slow or broken SMTP host
+     * must not hold up the response the owner is waiting on. The notifier
+     * swallows its own failures, and it leaves the entries outstanding either
+     * way, so a failed alert costs the owner nothing except a retry.
+     */
+    private function announceRestock(Product $product, bool $wasAvailable): void
+    {
+        if ($wasAvailable || ! $product->in_stock) {
+            return;
+        }
+
+        $waiting = $this->waitlist->pendingFor($product);
+
+        if ($waiting->isEmpty()) {
+            return;
+        }
+
+        defer(fn () => $this->restockNotifier->notifyRestocked($product, $waiting));
     }
 
     /**

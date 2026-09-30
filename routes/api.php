@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Admin\ProductController as AdminProductControlle
 use App\Http\Controllers\Api\V1\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\V1\Admin\UploadController;
 use App\Http\Controllers\Api\V1\Admin\VisitController as AdminVisitController;
+use App\Http\Controllers\Api\V1\Admin\WaitlistController as AdminWaitlistController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CheckoutController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\V1\OfferController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\SitemapController;
 use App\Http\Controllers\Api\V1\StoreController;
+use App\Http\Controllers\Api\V1\WaitlistController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -67,6 +69,14 @@ foreach (array_keys(config('chamma.locales')) as $locale) {
             Route::get('/products', [ProductController::class, 'index'])->middleware('track')->name('products.index');
             Route::get('/products/{slug}', [ProductController::class, 'show'])->middleware('track')->name('products.show');
             Route::get('/search', [ProductController::class, 'search'])->middleware('track')->name('search');
+
+            // Signup for the back-in-stock list, rate limited because it is the
+            // only unauthenticated POST on the storefront that stores something
+            // a person gave us. A bot that found the endpoint should not be
+            // able to fill the owner's calling list with a stranger's number.
+            Route::post('/products/{slug}/waitlist', [WaitlistController::class, 'store'])
+                ->middleware('throttle:waitlist')
+                ->name('waitlist.store');
 
             // An order lookup is a page view like any other, but a failed guess
             // is not a visit worth counting, so it is left untracked.
@@ -129,6 +139,13 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         // or deletes them, because a visitor record is data about a person
         // rather than content to be managed.
         Route::get('/visits', [AdminVisitController::class, 'index'])->name('visits.index');
+
+        // The back-in-stock list. Read, mark-as-called, and add a number taken
+        // over the phone. No delete: a number here is a person who gave it, and
+        // the panel should not offer to erase the fact that they were waiting.
+        Route::get('/waitlist', [AdminWaitlistController::class, 'index'])->name('waitlist.index');
+        Route::post('/waitlist', [AdminWaitlistController::class, 'store'])->name('waitlist.store');
+        Route::patch('/waitlist/notified', [AdminWaitlistController::class, 'markNotified'])->name('waitlist.notified');
 
         // Where order alerts go. Owned by the admin panel rather than .env
         // because who is on duty changes without a deploy.

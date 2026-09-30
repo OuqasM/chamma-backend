@@ -29,4 +29,17 @@ return [
         'footer' => 'You are receiving this because order alerts are enabled in the admin panel.',
     ],
 
+    'restock' => [
+        'subject' => 'Back in stock: :name (:count)',
+        'greeting' => 'A product people were waiting for is available again',
+        'intro' => 'They signed up on the product page to be told. Call them, or open the conversation straight from here.',
+        'product' => 'Product',
+        'price' => 'Price',
+        'waiters' => 'People to tell',
+        'waiting_since' => 'Signed up',
+        'call' => 'Message on WhatsApp',
+        'view' => 'View on the storefront',
+        'open' => 'Open the waiting list in the admin panel',
+        'footer' => 'You receive this because restock alerts are enabled in the admin panel.',
+    ],
 ];
