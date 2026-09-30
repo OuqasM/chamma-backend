@@ -65,10 +65,15 @@ return [
     'store' => [
         'email' => env('STORE_EMAIL', 'contact@chamaperfumes.ma'),
         'phone' => env('STORE_PHONE', '+212 5 22 00 00 00'),
-        'whatsapp' => env('STORE_WHATSAPP', '212522000000'),
-        'instagram' => env('STORE_INSTAGRAM', 'chamaperfumes'),
-        'facebook' => env('STORE_FACEBOOK', 'chamaperfumes'),
-        'tiktok' => env('STORE_TIKTOK', 'chamaperfumes'),
+        // Digits only, no `+` and no separators: the storefront builds
+        // `https://wa.me/<digits>`. This is the same line the payment
+        // instructions send transfer receipts to, so there is one number for
+        // the whole store rather than two that can drift apart.
+        'whatsapp' => env('STORE_WHATSAPP', '212773214703'),
+        // Handles, not URLs. See StoreContactService.
+        'instagram' => env('STORE_INSTAGRAM', 'chamma_store_'),
+        'facebook' => env('STORE_FACEBOOK', ''),
+        'tiktok' => env('STORE_TIKTOK', 'angelofheaven88'),
         'address' => [
             'fr' => '12, boulevard d’Anfa, Casablanca, Maroc',
             'ar' => '12، شارع أنفا، الدار البيضاء، المغرب',
@@ -92,12 +97,16 @@ return [
     | bank details in to have them shown on the order confirmation page; leave
     | them empty and the shopper is only asked for the receipt.
     |
+    | `whatsapp` falls back to the store's number so receipts and the footer
+    | link cannot drift onto two different numbers. Set STORE_PAYMENT_WHATSAPP
+    | only to override it deliberately.
+    |
     */
 
     'payment' => [
         'methods' => ['cod', 'bank_transfer'],
         'default' => 'cod',
-        'whatsapp' => env('STORE_PAYMENT_WHATSAPP', ''),
+        'whatsapp' => env('STORE_PAYMENT_WHATSAPP', env('STORE_WHATSAPP', '212773214703')),
         'bank' => [
             'holder' => env('STORE_BANK_HOLDER', ''),
             'bank' => env('STORE_BANK_NAME', ''),

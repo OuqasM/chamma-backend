@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Services\CatalogService;
 use App\Services\PaymentService;
 use App\Services\ShippingZoneService;
+use App\Services\StoreContactService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 
@@ -15,7 +16,7 @@ class StoreController extends Controller
      * Runtime configuration for the SPA: languages, currency, Moroccan cities,
      * delivery rules. Changing the store's country only means editing config.
      */
-    public function __invoke(Request $request): \Illuminate\Http\JsonResponse
+    public function __invoke(Request $request): JsonResponse
     {
         $locale = App::getLocale();
 
@@ -44,15 +45,7 @@ class StoreController extends Controller
                 'estimate' => config('chamma.shipping.estimate_days.'.$locale),
             ],
 
-            'contact' => [
-                'email' => config('chamma.store.email'),
-                'phone' => config('chamma.store.phone'),
-                'whatsapp' => config('chamma.store.whatsapp'),
-                'instagram' => config('chamma.store.instagram'),
-                'facebook' => config('chamma.store.facebook'),
-                'tiktok' => config('chamma.store.tiktok'),
-                'address' => config('chamma.store.address.'.$locale),
-            ],
+            'contact' => app(StoreContactService::class)->contact($locale),
 
             'catalog' => config('chamma.catalog'),
         ]);
