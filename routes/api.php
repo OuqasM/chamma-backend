@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Admin\CategoryController as AdminCategoryControl
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\V1\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\V1\Admin\UploadController;
 use App\Http\Controllers\Api\V1\Admin\VisitController as AdminVisitController;
 use App\Http\Controllers\Api\V1\BrandController;
@@ -123,5 +124,10 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         // or deletes them, because a visitor record is data about a person
         // rather than content to be managed.
         Route::get('/visits', [AdminVisitController::class, 'index'])->name('visits.index');
+
+        // Where order alerts go. Owned by the admin panel rather than .env
+        // because who is on duty changes without a deploy.
+        Route::get('/settings', [AdminSettingController::class, 'show'])->name('settings.show');
+        Route::put('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
     });
 });

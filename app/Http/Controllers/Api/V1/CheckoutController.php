@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCheckoutRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Services\OrderNotifier;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
@@ -23,6 +23,7 @@ class CheckoutController extends Controller
         private readonly ShippingService $shipping,
         private readonly ShippingZoneService $zones,
         private readonly PaymentService $payments,
+        private readonly OrderNotifier $notifier,
     ) {}
 
     /**
@@ -32,7 +33,7 @@ class CheckoutController extends Controller
     {
         $locale = $request->input('locale') ?: App::getLocale();
 
-        $customer = $request->safe()->only(['name', 'phone', 'city', 'address', 'notes']);
+        $customer = $request->safe()->only(['name', 'phone', 'email', 'city', 'address', 'notes']);
         $customer['payment_method'] = $request->input('payment_method') ?: $this->payments->default();
 
         try {
@@ -48,6 +49,12 @@ class CheckoutController extends Controller
 
             return response()->json(['message' => __('api.errors.checkout_failed')], 500);
         }
+
+        // afterResponse: the order is committed, so the alert is dispatched
+        // only once the response is on its way to the shopper. The mailer
+        // itself never throws past OrderNotifier, so a slow or broken SMTP host
+        // costs the shopper nothing and cannot fail a placed order.
+        defer(fn () => $this->notifier->notifyNewOrder($order));
 
         return response()->json([
             'order' => new OrderResource($order),

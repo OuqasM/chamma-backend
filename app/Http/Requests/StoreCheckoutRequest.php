@@ -35,6 +35,11 @@ class StoreCheckoutRequest extends FormRequest
             'city' => ['required', 'string', Rule::in($this->zones->names())],
             'address' => ['required', 'string', 'min:8', 'max:250'],
             'notes' => ['nullable', 'string', 'max:500'],
+            // Optional, and only collected so the store can email a receipt or
+            // reply to the alert. A bad address is the shopper's typo, so it is
+            // validated rather than stored: an order must not be lost because
+            // of a mistyped email, and it must not keep an invalid one either.
+            'email' => ['nullable', 'email', 'max:150'],
 
             'payment_method' => ['nullable', 'string', Rule::in(config('chamma.payment.methods', []))],
             'locale' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('chamma.locales')))],
@@ -94,6 +99,11 @@ class StoreCheckoutRequest extends FormRequest
             'address' => trim((string) $this->input('address')),
             'notes' => trim((string) $this->input('notes')),
             'phone' => trim((string) $this->input('phone')),
+            // An empty optional field must store as null, not as "". `nullable`
+            // accepts "" and Order.email is a real column, where an empty string
+            // is indistinguishable from a stored value to anything comparing
+            // for emptiness loosely.
+            'email' => ($email = trim((string) $this->input('email'))) === '' ? null : $email,
             // "casablanca" and "Casablanca " are the same delivery zone, so the
             // city is stored the way the carrier writes it and the `in:` rule
             // only ever sees a name the store really ships to.
