@@ -29,6 +29,7 @@ class WaitlistService
     {
         return $this->addPhone(
             $product,
+            (string) $request->input('name'),
             (string) $request->input('phone'),
             $locale,
         );
@@ -43,16 +44,18 @@ class WaitlistService
      *
      * @return array{entry: WaitlistEntry, created: bool}
      */
-    public function addFromAdmin(Product $product, string $phone, ?string $locale = null): array
+    public function addFromAdmin(Product $product, string $name, string $phone, ?string $locale = null): array
     {
-        return $this->addPhone($product, $phone, $locale);
+        return $this->addPhone($product, $name, $phone, $locale);
     }
 
     /**
      * @return array{entry: WaitlistEntry, created: bool}
      */
-    private function addPhone(Product $product, string $phone, ?string $locale): array
+    private function addPhone(Product $product, string $name, string $phone, ?string $locale): array
     {
+        $name = trim($name);
+
         $normalised = PhoneNumber::normalise($phone);
 
         if ($normalised === null) {
@@ -73,6 +76,7 @@ class WaitlistService
 
         $created = ! $entry->exists;
 
+        $entry->name = $name;
         $entry->phone = $phone;
         $entry->locale = $locale ?: (string) config('chamma.default_locale', 'fr');
 
@@ -99,6 +103,7 @@ class WaitlistService
                 ->where('phone_normalised', $normalised)
                 ->firstOrFail();
 
+            $entry->name = $name;
             $entry->phone = $phone;
             $entry->locale = $locale ?: (string) config('chamma.default_locale', 'fr');
             $entry->notified_at = null;

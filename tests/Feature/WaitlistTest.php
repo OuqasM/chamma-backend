@@ -76,9 +76,14 @@ class WaitlistTest extends TestCase
         return $product->fresh();
     }
 
-    private function join(Product $product, string $phone = '0612345678', string $locale = 'fr')
-    {
+    private function join(
+        Product $product,
+        string $phone = '0612345678',
+        string $locale = 'fr',
+        string $name = 'Amina Benali',
+    ) {
         return $this->postJson("/api/{$locale}/products/{$product->slug}/waitlist", [
+            'name' => $name,
             'phone' => $phone,
         ]);
     }
@@ -87,9 +92,12 @@ class WaitlistTest extends TestCase
      * The locale is the URL prefix, so the Arabic case posts to /api/ar and
      * expects the entry to be labelled Arabic without anything in the body.
      */
-    private function joinArabic(Product $product, string $phone): TestResponse
+    private function joinArabic(Product $product, string $phone, string $name = 'أمينة بنعلي'): TestResponse
     {
-        return $this->postJson("/api/ar/products/{$product->slug}/waitlist", ['phone' => $phone]);
+        return $this->postJson("/api/ar/products/{$product->slug}/waitlist", [
+            'name' => $name,
+            'phone' => $phone,
+        ]);
     }
 
     // ---------------------------------------------------------------
@@ -129,8 +137,10 @@ class WaitlistTest extends TestCase
 
     public function test_an_unknown_product_slug_rejects_signups(): void
     {
-        $this->postJson('/api/fr/products/nothing-here/waitlist', ['phone' => '0612345678'])
-            ->assertNotFound();
+        $this->postJson('/api/fr/products/nothing-here/waitlist', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+        ])->assertNotFound();
 
         $this->assertDatabaseCount('waitlist_entries', 0);
     }
@@ -139,11 +149,57 @@ class WaitlistTest extends TestCase
     {
         $product = $this->soldOutProduct();
 
-        $this->postJson("/api/fr/products/{$product->slug}/waitlist", [])
+        // A name and no number: the phone is the field under test, so sending
+        // nothing at all would fail on two rules and prove only one.
+        $this->postJson("/api/fr/products/{$product->slug}/waitlist", ['name' => 'Amina Benali'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('phone');
 
         $this->assertDatabaseCount('waitlist_entries', 0);
+    }
+
+    /**
+     * The name is required, not optional. A bare number on the waiting list is
+     * a dial string: the owner who rings it mid-shift cannot tell a regular
+     * from somebody who called once, and cannot say who is on the line.
+     */
+    public function test_the_name_is_required(): void
+    {
+        $product = $this->soldOutProduct();
+
+        $this->postJson("/api/fr/products/{$product->slug}/waitlist", ['phone' => '0612345678'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+
+        $this->assertDatabaseCount('waitlist_entries', 0);
+    }
+
+    /**
+     * Whitespace is not a name. " " satisfies a length check while leaving the
+     * owner a blank column and no way to greet the caller.
+     */
+    public function test_a_blank_name_is_rejected(): void
+    {
+        $product = $this->soldOutProduct();
+
+        $this->postJson("/api/fr/products/{$product->slug}/waitlist", [
+            'name' => '   ',
+            'phone' => '0612345678',
+        ])->assertUnprocessable()->assertJsonValidationErrors('name');
+
+        $this->assertDatabaseCount('waitlist_entries', 0);
+    }
+
+    public function test_the_name_is_trimmed_before_it_is_stored(): void
+    {
+        $product = $this->soldOutProduct();
+
+        $this->join($product, '0612345678', 'fr', '  Amina Benali  ')->assertCreated();
+
+        $this->assertDatabaseHas('waitlist_entries', [
+            'phone_normalised' => '+212612345678',
+            'name' => 'Amina Benali',
+        ]);
     }
 
     /**
@@ -185,6 +241,7 @@ class WaitlistTest extends TestCase
         $product = $this->soldOutProduct();
 
         $this->postJson("/api/ar/products/{$product->slug}/waitlist", [
+            'name' => 'أمينة بنعلي',
             'phone' => '0612345678',
             'locale' => 'en',
         ])->assertCreated();
@@ -322,6 +379,7 @@ class WaitlistTest extends TestCase
             // The other request wins the race by a hair.
             DB::table('waitlist_entries')->insert([
                 'product_id' => $product->id,
+                'name' => 'Amina Benali',
                 'phone' => '0612345678',
                 'phone_normalised' => $normalised,
                 'locale' => 'fr',
@@ -353,11 +411,11 @@ class WaitlistTest extends TestCase
         $product = $this->soldOutProduct();
         $service = app(WaitlistService::class);
 
-        $first = $service->addFromAdmin($product, '0612345678');
+        $first = $service->addFromAdmin($product, 'Amina Benali', '0612345678');
         $this->assertTrue($first['created']);
 
         // The number the customer would have typed a second time, reformatted.
-        $second = $service->addFromAdmin($product, '+212 612 34 56 78');
+        $second = $service->addFromAdmin($product, 'Amina Benali', '+212 612 34 56 78');
         $this->assertFalse($second['created']);
 
         $this->assertSame($first['entry']->id, $second['entry']->id);
@@ -382,8 +440,10 @@ class WaitlistTest extends TestCase
             $this->join($product, '061234567'.($i % 10))->assertSuccessful();
         }
 
-        $this->postJson("/api/fr/products/{$slug}/waitlist", ['phone' => '0655555555'])
-            ->assertStatus(429);
+        $this->postJson("/api/fr/products/{$slug}/waitlist", [
+            'name' => 'Amina Benali',
+            'phone' => '0655555555',
+        ])->assertStatus(429);
     }
 
     // ---------------------------------------------------------------
@@ -546,6 +606,7 @@ class WaitlistTest extends TestCase
         $this->admin();
         $this->postJson('/api/admin/waitlist', [
             'product_id' => $product->id,
+            'name' => 'Amina Benali',
             'phone' => '0612345678',
         ])->assertCreated()->assertJsonPath('entry.created', true);
 
@@ -563,6 +624,7 @@ class WaitlistTest extends TestCase
         $this->admin();
         $this->postJson('/api/admin/waitlist', [
             'product_id' => $product->id,
+            'name' => 'Amina Benali',
             'phone' => '0612345678',
         ])->assertOk()->assertJsonPath('entry.created', false);
 
@@ -576,6 +638,7 @@ class WaitlistTest extends TestCase
         $this->admin();
         $this->postJson('/api/admin/waitlist', [
             'product_id' => $product->id,
+            'name' => 'Amina Benali',
             'phone' => '12345',
         ])->assertUnprocessable()->assertJsonValidationErrors('phone');
     }
@@ -864,10 +927,13 @@ class WaitlistTest extends TestCase
     }
 
     /**
-     * Only a phone number is collected. No name and no email, because there is
-     * nothing to send either of them to.
+     * A name and a phone, and nothing else.
+     *
+     * The name is there to greet the caller with. An email is not, and the test
+     * sends one anyway to prove it is dropped rather than quietly kept: a stored
+     * address would suggest a written notification that nothing sends.
      */
-    public function test_no_contact_detail_beyond_the_phone_is_stored(): void
+    public function test_only_the_name_and_the_phone_are_stored(): void
     {
         $product = $this->soldOutProduct();
 
@@ -879,9 +945,17 @@ class WaitlistTest extends TestCase
 
         $entry = WaitlistEntry::query()->firstOrFail();
 
-        $this->assertSame(
-            ['phone', 'phone_normalised', 'locale'],
-            array_values(array_diff(array_keys($entry->getAttributes()), ['id', 'notified_at', 'notified_channel', 'created_at', 'updated_at', 'product_id']))
-        );
+        $this->assertSame('Ahmed Ben Ali', $entry->name);
+
+        // Sorted on both sides, because the point is which columns exist.
+        // Physical column order is a detail of the migration, and asserting it
+        // would fail this test whenever a column is moved for no good reason.
+        $stored = array_values(array_diff(
+            array_keys($entry->getAttributes()),
+            ['id', 'notified_at', 'notified_channel', 'created_at', 'updated_at', 'product_id'],
+        ));
+        sort($stored);
+
+        $this->assertSame(['locale', 'name', 'phone', 'phone_normalised'], $stored);
     }
 }

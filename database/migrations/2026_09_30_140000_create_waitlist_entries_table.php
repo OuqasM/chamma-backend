@@ -12,14 +12,20 @@ use Illuminate\Support\Facades\Schema;
  * become two people for the owner to call, so the second submission updates the
  * first row instead of inserting another.
  *
- * Phone is the only contact detail collected, because it is the only one the
- * owner asked to be able to act on. An email column would invite a promise of
- * a written notification that nothing sends.
- *
  * The phone is stored twice on purpose. `phone` keeps what the customer typed
  * so the panel shows them the number they recognise, and `phone_normalised` is
  * the digits-only form the unique index and the `wa.me` link use. Comparing raw
  * input would treat "0612345678" and "06 12 34 56 78" as two people.
+ *
+ * `name` is collected alongside the number, and is required: a number on its own
+ * is a dial string, and the owner opening an unknown number mid-shift cannot
+ * tell a regular from someone who called once. The name is what makes the
+ * greeting possible.
+ *
+ * This column was added before the migration was ever run outside the test
+ * suite, so it is part of the create rather than a second migration — a table
+ * that exists only in `php artisan test` does not need a patch to gain a column
+ * it never had anywhere else.
  */
 return new class extends Migration
 {
@@ -38,6 +44,13 @@ return new class extends Migration
 
             $table->string('phone', 30);
             $table->string('phone_normalised', 20);
+
+            // Required, not nullable. A number with no name is a dial string,
+            // and the owner working down the list cannot tell a regular from
+            // someone who rang once. Not stored split into first/last the way
+            // orders are: nobody addresses an envelope here, and the owner
+            // reads this column whole to say "Amina? It's Chamma".
+            $table->string('name', 120);
 
             // Which language they were waiting in, so the store can reply in it.
             $table->string('locale', 5)->default('fr');

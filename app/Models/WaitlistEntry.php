@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $product_id
+ * @property string $name
  * @property string $phone
  * @property string $phone_normalised
  * @property string $locale
@@ -23,6 +24,7 @@ class WaitlistEntry extends Model
 {
     protected $fillable = [
         'product_id',
+        'name',
         'phone',
         'phone_normalised',
         'locale',

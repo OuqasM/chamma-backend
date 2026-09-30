@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\App;
 /**
  * Signup for the "tell me when it's back" list on an unavailable product.
  *
- * Public, like checkout: the customer is identified by nothing but the phone
- * number they type. The product is resolved by slug in the requested locale,
+ * Public, like checkout: the customer is identified only by what they type —
+ * a name and a phone number. The product is resolved by slug in the requested locale,
  * the same way the product page resolves it, so a signed-up entry always
  * belongs to the page the customer was actually looking at.
  */

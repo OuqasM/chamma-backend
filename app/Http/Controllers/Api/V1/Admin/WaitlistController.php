@@ -15,11 +15,12 @@ use Illuminate\Validation\ValidationException;
 /**
  * The waiting list, for the owner.
  *
- * Two jobs: show who is outstanding, and record that they were reached. There
- * is no delete endpoint. A number on this list is a person who gave it, and
- * removing it from a table next to a delete button would quietly suggest the
- * owner can erase the fact that they were ever waiting for a product — so the
- * record stays and is marked, and only disappears with the product itself.
+ * Shows a name and a number for each person outstanding, and records that they
+ * were reached. There is no delete endpoint. A number on this list is a person
+ * who gave it, and removing it from a table next to a delete button would
+ * quietly suggest the owner can erase the fact that they were ever waiting for
+ * a product — so the record stays and is marked, and only disappears with the
+ * product itself.
  */
 class WaitlistController extends Controller
 {
@@ -52,6 +53,7 @@ class WaitlistController extends Controller
         return response()->json([
             'waitlist' => collect($page->items())->map(fn (WaitlistEntry $entry) => [
                 'id' => $entry->id,
+                'name' => $entry->name,
                 'phone' => $entry->phone,
                 // A wa.me link the owner can open straight from the table. The
                 // whole purpose of collecting a number is that it gets used.
@@ -141,6 +143,11 @@ class WaitlistController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
+            // The owner is writing down what someone told them on the phone,
+            // and the name is what they were given. Required here for the same
+            // reason it is required on the public form: a bare number is a dial
+            // string, and nobody can answer "is this you?" with one.
+            'name' => ['required', 'string', 'min:2', 'max:120'],
             'phone' => ['required', 'string'],
             'locale' => ['nullable', 'string', 'max:5'],
         ]);
@@ -157,11 +164,17 @@ class WaitlistController extends Controller
         $product = Product::query()->findOrFail($validated['product_id']);
 
         $service = app(WaitlistService::class);
-        $result = $service->addFromAdmin($product, $validated['phone'], $validated['locale'] ?? null);
+        $result = $service->addFromAdmin(
+            $product,
+            $validated['name'],
+            $validated['phone'],
+            $validated['locale'] ?? null,
+        );
 
         return response()->json([
             'entry' => [
                 'id' => $result['entry']->id,
+                'name' => $result['entry']->name,
                 'phone' => $result['entry']->phone,
                 'created' => $result['created'],
             ],

@@ -131,6 +131,9 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
 
+        // Typed-in orders sit alongside the ones checkout creates, in the same
+        // table and the same list. There is no separate "manual" order type.
+        Route::post('/orders', [AdminOrderController::class, 'store'])->name('orders.store');
         Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');

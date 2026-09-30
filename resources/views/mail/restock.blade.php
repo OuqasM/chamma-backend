@@ -74,10 +74,16 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #eee9e2;">
                                 <tr>
                                     <td style="padding:12px 0;">
-                                        <div style="font-size:16px;font-weight:600;letter-spacing:.02em;direction:ltr;text-align:left;">
+                                        {{-- Name first, then the number: the name is what the
+                                             owner says when the phone answers, and reading it
+                                             from the panel means they never have to guess. --}}
+                                        <div style="font-size:15px;font-weight:600;letter-spacing:.01em;">
+                                            {{ $entry->name }}
+                                        </div>
+                                        <div style="margin-top:2px;font-size:15px;color:#3a1d27;direction:ltr;text-align:left;font-weight:500;">
                                             {{ $entry->phone }}
                                         </div>
-                                        <div style="margin-top:2px;font-size:12px;color:#8a837a;">
+                                        <div style="margin-top:4px;font-size:12px;color:#8a837a;">
                                             {{ __('mail.restock.waiting_since') }}
                                             {{ $entry->created_at?->format('d/m/Y') }}
                                         </div>
