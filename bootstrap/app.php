@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\TrackVisitor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdmin::class,
             // Applied with an explicit locale on the prefixed routes: locale:fr
             'locale' => SetLocale::class,
+            // Counts a storefront page view against a visitor.
+            'track' => TrackVisitor::class,
         ]);
 
         // The storefront is a separate origin (Vite dev server / nginx).
