@@ -186,9 +186,9 @@ class CatalogService
                 // heading claims. Showing the longest-standing products instead
                 // is honest: nothing has proved popular yet.
                 //
-                // Asked once per request against one indexed column, so the
-                // extra query is not worth the conditional SQL this would
-                // otherwise need.
+                // Asked once per request. `sales_count` is unindexed, so this is
+                // a scan of the products table — fine at catalogue scale, and
+                // still cheaper than the conditional SQL that would avoid it.
                 $maxSales = (int) Product::query()->active()->max('sales_count');
 
                 if ($maxSales <= 0) {
