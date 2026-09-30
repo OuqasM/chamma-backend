@@ -129,7 +129,12 @@ return [
     */
 
     'shipping' => [
-        'free_threshold' => (float) env('STORE_FREE_SHIPPING_THRESHOLD', 700),
+        // Free-shipping threshold, in MAD. 0 disables free shipping entirely,
+        // which is the default: the store's own carrier tariff is the price a
+        // shopper is quoted, and silently replacing it with "Offerte" above an
+        // arbitrary basket size undercuts the per-city fees that the checkout
+        // picker displays. Set STORE_FREE_SHIPPING_THRESHOLD to opt back in.
+        'free_threshold' => (float) env('STORE_FREE_SHIPPING_THRESHOLD', 0),
         'flat_cost' => (float) env('STORE_FLAT_SHIPPING_COST', 35),
         'remote_surcharge' => (float) env('STORE_REMOTE_SHIPPING_SURCHARGE', 20),
         'estimate_days' => [

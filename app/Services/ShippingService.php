@@ -16,7 +16,10 @@ class ShippingService
 
     public function cost(float $subtotal, string $city): float
     {
-        if ($subtotal >= (float) config('chamma.shipping.free_threshold')) {
+        // Routed through isFree() rather than an inline comparison: a threshold
+        // of 0 means the promotion is off, and `$subtotal >= 0` would make every
+        // basket free instead.
+        if ($this->isFree($subtotal)) {
             return 0.0;
         }
 
@@ -53,7 +56,13 @@ class ShippingService
 
     public function isFree(float $subtotal): bool
     {
-        return $subtotal >= (float) config('chamma.shipping.free_threshold');
+        $threshold = $this->freeThreshold();
+
+        // A threshold of 0 means the promotion is switched off, not that every
+        // order qualifies for free delivery. Comparing `$subtotal >= 0`
+        // literally would make shipping free for all baskets, including the
+        // empty one.
+        return $threshold > 0 && $subtotal >= $threshold;
     }
 
     public function freeThreshold(): float
@@ -63,7 +72,15 @@ class ShippingService
 
     public function remainingForFreeShipping(float $subtotal): float
     {
-        return max(0.0, round($this->freeThreshold() - $subtotal, 2));
+        $threshold = $this->freeThreshold();
+
+        // Promotion disabled: there is nothing to earn towards, so this must not
+        // read as "0 MAD away from free shipping" on every basket.
+        if ($threshold <= 0) {
+            return 0.0;
+        }
+
+        return max(0.0, round($threshold - $subtotal, 2));
     }
 
     public function estimate(string $locale): string
