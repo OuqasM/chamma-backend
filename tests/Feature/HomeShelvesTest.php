@@ -140,6 +140,47 @@ class HomeShelvesTest extends TestCase
         );
     }
 
+    public function test_best_sellers_fall_back_to_the_oldest_products_when_nothing_has_sold(): void
+    {
+        // A brand new shop has sold nothing, so every product shares
+        // sales_count = 0 and "best sellers" has no opinion. Falling back to the
+        // id tie-break would put the *newest* products under that heading, which
+        // claims the opposite of what they are.
+        $oldestFirst = [];
+
+        foreach (range(1, 6) as $i) {
+            $product = $this->create("Parfum {$i}");
+            $this->stamp($product, ['created_at' => now()->subDays(20 - $i)]);
+            $oldestFirst[] = $product;
+        }
+
+        $ids = array_column($this->getJson('/api/fr/home')->json('best_sellers'), 'id');
+
+        $this->assertSame(
+            array_map(fn (Product $p) => $p->id, array_slice($oldestFirst, 0, 4)),
+            $ids,
+            'with no sales at all, the four oldest products lead the shelf'
+        );
+    }
+
+    public function test_best_sellers_switch_back_to_ranking_the_moment_something_sells(): void
+    {
+        // The fallback must not become permanent once a real sale lands, and it
+        // must not swallow that sale: the product that sold belongs on the shelf
+        // even though it is the newest thing in the shop.
+        $sold = $this->create('The One That Sold');
+        $this->stamp($sold, ['created_at' => now(), 'sales_count' => 1]);
+
+        foreach (range(1, 5) as $i) {
+            $this->stamp($this->create("Parfum {$i}"), ['created_at' => now()->subDays(10 - $i)]);
+        }
+
+        $ids = array_column($this->getJson('/api/fr/home')->json('best_sellers'), 'id');
+
+        $this->assertCount(4, $ids);
+        $this->assertSame($sold->id, $ids[0], 'the only product with a sale leads the shelf');
+    }
+
     public function test_offers_are_four_discounted_products_best_selling_first(): void
     {
         // Five products on sale, so the four-slot shelf has to choose. The two

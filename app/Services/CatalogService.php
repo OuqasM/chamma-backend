@@ -6,9 +6,9 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductTranslation;
-use Illuminate\Support\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 
 /**
@@ -177,12 +177,29 @@ class CatalogService
      */
     public function bestSellers(int $limit = 8, ?string $locale = null): Collection
     {
-        // `id` tie-break for the same reason as newArrivals. It matters more
-        // here: every product that has never sold shares `sales_count = 0`, so
-        // in a young catalogue the whole shelf is one enormous tie.
         return $this->shelf(
             $locale,
-            fn (Builder $q) => $q->orderByDesc('sales_count')->orderByDesc('products.id'),
+            function (Builder $q) {
+                // With no sales anywhere the shelf would be an arbitrary four,
+                // and worse, a *newest* four, because that is the tie-break the
+                // newArrivals shelf wants and it is the opposite of what this
+                // heading claims. Showing the longest-standing products instead
+                // is honest: nothing has proved popular yet.
+                //
+                // Asked once per request against one indexed column, so the
+                // extra query is not worth the conditional SQL this would
+                // otherwise need.
+                $maxSales = (int) Product::query()->active()->max('sales_count');
+
+                if ($maxSales <= 0) {
+                    return $q->orderBy('products.created_at')->orderBy('products.id');
+                }
+
+                // `id` tie-break for the same reason as newArrivals: products with
+                // equal sales would otherwise be ordered by whatever the storage
+                // engine felt like.
+                return $q->orderByDesc('sales_count')->orderByDesc('products.id');
+            },
             $limit
         );
     }
