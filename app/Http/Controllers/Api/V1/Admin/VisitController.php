@@ -54,7 +54,11 @@ class VisitController extends Controller
                 'first_seen' => $visit->first_seen?->toIso8601String(),
                 'last_seen' => $visit->last_seen?->toIso8601String(),
             ])->values(),
-            'meta' => [
+            // `toArray()` on the paginator is what carries `links`, and the
+            // shared admin <Pagination> renders from `meta.links`. Hand-rolling
+            // current_page/last_page instead would leave the component with
+            // nothing to draw and the page would silently have no paging.
+            'meta' => $page->toArray() + [
                 'current_page' => $page->currentPage(),
                 'last_page' => $page->lastPage(),
                 'per_page' => $page->perPage(),
