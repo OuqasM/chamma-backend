@@ -20,7 +20,7 @@ return [
     ],
 
     'store' => [
-        'tagline' => 'Parfums premium & essentiels beauté',
+        'tagline' => 'Parfums et cosmétiques',
         'nationwide' => 'Livraison partout au Maroc',
         'cod' => 'Paiement à la livraison',
         'order_confirmed' => 'Merci ! Votre commande :reference est confirmée.',

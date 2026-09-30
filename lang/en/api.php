@@ -20,7 +20,7 @@ return [
     ],
 
     'store' => [
-        'tagline' => 'Premium perfumes & beauty essentials',
+        'tagline' => 'Perfumes and cosmetics',
         'nationwide' => 'Delivery across Morocco',
         'cod' => 'Cash on delivery',
         'order_confirmed' => 'Thank you! Your order :reference is confirmed.',
