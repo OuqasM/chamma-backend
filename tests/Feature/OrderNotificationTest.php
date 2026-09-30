@@ -461,13 +461,13 @@ class OrderNotificationTest extends TestCase
      */
     public function test_the_message_links_to_the_admin_panel(): void
     {
-        config(['app.url' => 'https://chamaperfumes.ma/']);
+        config(['chamma.storefront_url' => 'https://chammastore.test']);
 
         $order = $this->placeOrder();
 
         $html = (new NewOrderNotification($order))->render();
 
-        $this->assertStringContainsString('https://chamaperfumes.ma/fr/admin/orders', $html);
+        $this->assertStringContainsString('https://chammastore.test/fr/admin/orders', $html);
     }
 
     /**

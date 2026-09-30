@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Product;
 use App\Support\Markdown;
+use App\Support\StorefrontUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\App;
@@ -76,12 +77,14 @@ class ProductResource extends JsonResource
                 'name' => $this->categories->first()->name($locale),
             ] : null),
 
-            'image' => $image ? [
+            // width/height are null unless the file could actually be read,
+            // rather than a fixed guess: the storefront reserves space from
+            // these, and a wrong ratio shifts the layout on every product page.
+            'image' => $image ? array_filter([
                 'url' => $image->url,
                 'alt' => $image->alt ?: $this->name($locale),
-                'width' => 1000,
-                'height' => 1250,
-            ] : null,
+                'dimensions' => $image->dimensions(),
+            ], static fn ($v) => $v !== null) : null,
 
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($i) => [
                 'url' => $i->url,
@@ -90,6 +93,10 @@ class ProductResource extends JsonResource
             ])->values()),
 
             'url' => '/'.$locale.'/products/'.$this->slug($locale),
+            // Relative, for react-router links. The two below are absolute,
+            // because a canonical and an hreflang that a crawler reads have to
+            // name the storefront host, not the API it was served from.
+            'canonical' => StorefrontUrl::to('/'.$locale.'/products/'.$this->slug($locale)),
             'alternates' => $this->alternates(),
 
             'seo' => [
@@ -112,7 +119,7 @@ class ProductResource extends JsonResource
         $paths = [];
 
         foreach (array_keys(config('chamma.locales')) as $locale) {
-            $paths[$locale] = '/'.$locale.'/products/'.$this->slug($locale);
+            $paths[$locale] = StorefrontUrl::to('/'.$locale.'/products/'.$this->slug($locale));
         }
 
         return $paths;

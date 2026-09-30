@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
+use App\Support\StorefrontUrl;
 
 class BrandResource extends JsonResource
 {
@@ -27,6 +28,8 @@ class BrandResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'products_count' => $this->whenCounted('products'),
             'url' => '/'.$locale.'/brands/'.$this->slug,
+            // Absolute for crawlers; `url` stays relative for links.
+            'canonical' => StorefrontUrl::to('/'.$locale.'/brands/'.$this->slug),
             'alternates' => $this->alternates(),
         ];
     }
@@ -39,7 +42,7 @@ class BrandResource extends JsonResource
         $paths = [];
 
         foreach (array_keys(config('chamma.locales')) as $locale) {
-            $paths[$locale] = '/'.$locale.'/brands/'.$this->slug;
+            $paths[$locale] = StorefrontUrl::to('/'.$locale.'/brands/'.$this->slug);
         }
 
         return $paths;

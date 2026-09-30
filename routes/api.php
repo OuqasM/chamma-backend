@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\NavigationController;
 use App\Http\Controllers\Api\V1\OfferController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\SitemapController;
 use App\Http\Controllers\Api\V1\StoreController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/store', StoreController::class)->name('api.store');
+
+// Locale independent, because it covers every locale at once and each <loc>
+// already carries its own path. The storefront's robots.txt points here.
+Route::get('/sitemap.xml', SitemapController::class)->name('api.sitemap');
 
 foreach (array_keys(config('chamma.locales')) as $locale) {
     Route::prefix($locale)

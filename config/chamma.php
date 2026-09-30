@@ -195,6 +195,21 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public storefront origin
+    |--------------------------------------------------------------------------
+    |
+    | The host the *storefront* is served from, which is not the API's own
+    | APP_URL: the API lives on api.chammastore.com while the pages Google
+    | indexes live on chammastore.com. Canonicals, hreflang alternates, sitemap
+    | entries and JSON-LD ids are all storefront URLs, so they have to be built
+    | from this rather than from APP_URL.
+    |
+    */
+
+    'storefront_url' => rtrim((string) env('STOREFRONT_URL', 'https://chammastore.com'), '/'),
+
     'admin' => [
         'email' => env('ADMIN_EMAIL', 'admin@chamaperfumes.ma'),
         'password' => env('ADMIN_PASSWORD'),

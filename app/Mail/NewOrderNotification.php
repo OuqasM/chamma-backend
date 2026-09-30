@@ -72,7 +72,10 @@ class NewOrderNotification extends Mailable
      */
     private function adminUrl(): string
     {
-        $base = rtrim((string) config('app.url'), '/');
+        // The admin panel is served by the storefront, not the API, so the link
+        // is built from the storefront origin. APP_URL is the API's own host
+        // and would send the owner to a 404.
+        $base = rtrim((string) config('chamma.storefront_url'), '/');
         $locale = config('chamma.default_locale', 'fr');
 
         return "{$base}/{$locale}/admin/orders";
