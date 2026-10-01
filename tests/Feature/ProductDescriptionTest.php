@@ -201,6 +201,136 @@ class ProductDescriptionTest extends TestCase
         $this->assertStringContainsString('&lt;script&gt;', $html);
     }
 
+    /**
+     * The other languages a shopper can read the description in.
+     *
+     * The storefront control that shows these is only honest if a language
+     * appears there because a real description was written in it. translated()
+     * falls back through French to English, so a naive read of
+     * `description('ar')` on a product only ever written in French returns the
+     * French text — which the control would then present to an Arabic reader as
+     * the store's own Arabic copy. That is the failure these pin.
+     */
+    public function test_it_offers_only_the_languages_that_were_actually_written(): void
+    {
+        $this->admin();
+
+        $this->create([
+            'descriptions' => [
+                'fr' => 'Un oud intense.',
+                'ar' => 'عود ملكي.',
+                // English deliberately left unwritten.
+            ],
+        ]);
+
+        $offered = $this->getJson('/api/fr/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        $this->assertCount(1, $offered);
+        $this->assertSame('ar', $offered[0]['locale']);
+        $this->assertSame('عود ملكي.', $offered[0]['description']);
+    }
+
+    public function test_it_never_offers_a_language_holding_another_languages_text(): void
+    {
+        $this->admin();
+
+        $this->create(['descriptions' => ['fr' => 'Un oud intense.']]);
+
+        $offered = $this->getJson('/api/fr/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        // The regression: French only, so nothing to offer. English and Arabic
+        // both *resolve* to the French copy through the fallback chain, and
+        // offering those would be offering French twice under two names.
+        $this->assertSame([], $offered);
+
+        foreach ($offered as $entry) {
+            $this->assertNotSame('Un oud intense.', $entry['description']);
+        }
+    }
+
+    public function test_it_does_not_offer_the_language_the_page_is_already_in(): void
+    {
+        $this->admin();
+
+        $this->create([
+            'descriptions' => ['fr' => 'Un oud intense.', 'ar' => 'عود ملكي.', 'en' => 'A deep oud.'],
+        ]);
+
+        $offered = $this->getJson('/api/fr/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        $locales = array_column($offered, 'locale');
+
+        $this->assertNotContains('fr', $locales);
+        $this->assertContains('ar', $locales);
+        $this->assertContains('en', $locales);
+    }
+
+    /**
+     * The name has to be in the language's own script. A shopper who cannot
+     * read the page's language may not read its alphabet either, so a button
+     * reading "Français" tells an Arabic reader far less than "العربية" does.
+     */
+    public function test_each_offered_language_is_named_in_its_own_script(): void
+    {
+        $this->admin();
+
+        $this->create(['descriptions' => ['fr' => 'Un oud intense.', 'ar' => 'عود ملكي.', 'en' => 'A deep oud.']]);
+
+        $offered = $this->getJson('/api/fr/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        $byLocale = collect($offered)->keyBy('locale');
+
+        $this->assertSame('العربية', $byLocale['ar']['name']);
+        $this->assertSame('English', $byLocale['en']['name']);
+        // Arabic is the one language the store reads right to left, and the
+        // description has to be set that way or the whole paragraph renders
+        // left-aligned with its punctuation in the wrong order.
+        $this->assertSame('rtl', $byLocale['ar']['dir']);
+        $this->assertSame('ltr', $byLocale['en']['dir']);
+    }
+
+    public function test_an_offered_description_is_rendered_html_and_escaped_like_the_page(): void
+    {
+        $this->admin();
+
+        $this->create([
+            'descriptions' => [
+                'fr' => 'Un oud intense.',
+                'ar' => '**عود** <script>alert(1)</script> ملكي.',
+            ],
+        ]);
+
+        $entry = $this->getJson('/api/fr/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations.0');
+
+        // The same markdown-to-HTML the page's own description gets, so a
+        // translated description is not a second-class one that loses its
+        // formatting.
+        $this->assertStringContainsString('<strong>', $entry['description_html']);
+        $this->assertStringNotContainsString('<script>', $entry['description_html']);
+    }
+
+    public function test_a_product_with_no_description_offers_nothing(): void
+    {
+        $this->admin();
+
+        $this->create();
+
+        $this->assertSame(
+            [],
+            $this->getJson('/api/fr/products/oud-royale')->assertOk()->json('product.description_translations')
+        );
+    }
+
     public function test_the_meta_description_is_plain_text(): void
     {
         $this->admin();

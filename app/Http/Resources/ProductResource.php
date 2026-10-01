@@ -8,7 +8,6 @@ use App\Support\StorefrontUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -25,6 +24,7 @@ class ProductResource extends JsonResource
         $description = $this->description($locale);
 
         return [
+            'description_translations' => $this->descriptionTranslations($locale),
             'id' => $this->id,
             'slug' => $this->slug($locale),
             'canonical_slug' => $this->slug,
@@ -106,6 +106,60 @@ class ProductResource extends JsonResource
                     ?: Str::limit(Markdown::toPlainText($description), 160),
             ],
         ];
+    }
+
+    /**
+     * This product's description in every language that has one of its own,
+     * for the "read this in another language" control on the product page.
+     *
+     * Read straight off the translation rows rather than through
+     * HasTranslations::translated(), and that is the whole point. translated()
+     * walks a fallback chain — requested, then default, then fallback — so
+     * asking it for Arabic on a product that was only ever written in French
+     * returns the French text. A shopper who does not read French, shown a
+     * paragraph of it under an Arabic heading, is worse off than one shown
+     * nothing: it looks like the store wrote that and cannot be trusted to
+     * describe its own product.
+     *
+     * So only rows with a description of their own qualify, the language is
+     * named in that language from the same locale table the rest of the store
+     * uses, and the current locale is left out because the page already shows
+     * it. Empty for a product nobody has translated, which is what the control
+     * needs to know in order not to offer anything.
+     *
+     * @return array<int, array{locale: string, name: string, dir: string, description: string, description_html: string}>
+     */
+    private function descriptionTranslations(string $currentLocale): array
+    {
+        $locales = config('chamma.locales');
+
+        $available = [];
+
+        foreach ($this->translations as $translation) {
+            $code = (string) $translation->locale;
+            $text = (string) $translation->description;
+
+            // Unknown locale, the one already on screen, or copy that was never
+            // written: nothing to offer.
+            if (! isset($locales[$code]) || $code === $currentLocale || trim($text) === '') {
+                continue;
+            }
+
+            $available[] = [
+                'locale' => $code,
+                'name' => $locales[$code]['native'],
+                'dir' => $locales[$code]['dir'],
+                'description' => $text,
+                'description_html' => Markdown::toHtml($text),
+            ];
+        }
+
+        // A predictable order, so the control does not reshuffle between two
+        // loads of the same product.
+        usort($available, fn (array $a, array $b) => array_search($a['locale'], array_keys($locales), true)
+            <=> array_search($b['locale'], array_keys($locales), true));
+
+        return $available;
     }
 
     /**
