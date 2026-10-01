@@ -68,22 +68,133 @@ class AdminVisitTest extends TestCase
     }
 
     /**
-     * The identity token is an identifier, so the panel shows a fragment of it
-     * rather than the whole value. It is a stable handle for a person's browsing
-     * history and there is no screen an admin genuinely needs all 32 characters
-     * on.
+     * A group covers several identity cookies, so there is no single token that
+     * would be the truth for the row. Exposing one member's token as if it spoke
+     * for the others would mislead; none is exposed instead.
      */
-    public function test_the_visitor_token_is_shortened_in_the_response(): void
+    public function test_the_grouped_row_does_not_expose_an_identity_token(): void
     {
         $visits = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('visits');
 
-        // Ordered by last_seen desc, so the one seen an hour ago comes first.
-        $this->assertSame(str_repeat('b', 8), $visits[0]['visitor_id']);
-
-        foreach ($visits as $visitor) {
-            $this->assertSame(8, strlen($visitor['visitor_id']), 'the full token leaked');
+        foreach ($visits as $group) {
+            $this->assertArrayNotHasKey('visitor_id', $group);
         }
-        $this->assertNotContains($this->visit->visitor_id, array_column($visits, 'visitor_id'));
+
+        $this->assertNotContains($this->visit->visitor_id, $visits);
+        $this->assertNotContains($this->other->visitor_id, $visits);
+    }
+
+    /**
+     * The reported problem: two rows with the same IP but different ids. They are
+     * one line now, and `visitors` is what stops the collapse from hiding that
+     * they were two people.
+     */
+    public function test_two_visitors_behind_one_ip_collapse_into_one_row(): void
+    {
+        $newest = Visit::query()->create([
+            'visitor_id' => str_repeat('c', 32),
+            'ip' => '203.0.113.7',
+            'device' => 'desktop',
+            'browser' => 'Chrome',
+            'os' => 'macOS',
+            'path' => 'offers',
+            'referrer' => null,
+            'locale' => 'en',
+            'visits_count' => 3,
+            'first_seen' => now()->subHours(5),
+            'last_seen' => now()->subMinutes(10),
+        ]);
+
+        $visits = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('visits');
+
+        // Two addresses: the shared one and 203.0.113.8.
+        $this->assertCount(2, $visits);
+
+        $shared = collect($visits)->firstWhere('ip', '203.0.113.7');
+
+        $this->assertSame(2, $shared['visitors'], 'both identities behind the address must be counted');
+        $this->assertSame(7, $shared['visits_count'], 'the running counters must be added together');
+        // The most recent visit at the address, not the older one's details.
+        $this->assertSame('Chrome', $shared['browser']);
+        $this->assertSame('desktop', $shared['device']);
+        // Compared against the stored value: the column truncates microseconds
+        // that `now()` carries, so a freshly built timestamp would not match.
+        $this->assertSame($newest->refresh()->last_seen->toIso8601String(), $shared['last_seen']);
+    }
+
+    /**
+     * One visitor is one line, however many times they return: the group must not
+     * inflate `visitors` past one.
+     */
+    public function test_one_visitor_returning_does_not_look_like_several_people(): void
+    {
+        $visits = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('visits');
+
+        $single = collect($visits)->firstWhere('ip', '203.0.113.7');
+
+        $this->assertSame(1, $single['visitors']);
+        // But their repeat views are still counted.
+        $this->assertSame(4, $single['visits_count']);
+    }
+
+    /**
+     * `ip` is nullable, and all the addressless visits form their own group.
+     * They must not be silently dropped, nor merged into a real address.
+     */
+    public function test_visits_without_an_ip_form_their_own_row(): void
+    {
+        foreach (['d', 'e'] as $letter) {
+            Visit::query()->create([
+                'visitor_id' => str_repeat($letter, 32),
+                'ip' => null,
+                'device' => 'other',
+                'browser' => 'Firefox',
+                'os' => 'Linux',
+                'path' => 'products',
+                'referrer' => null,
+                'locale' => 'fr',
+                'visits_count' => 2,
+                'first_seen' => now()->subHours(2),
+                'last_seen' => now()->subHour(),
+            ]);
+        }
+
+        $visits = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('visits');
+
+        $this->assertCount(3, $visits);
+
+        $unknown = collect($visits)->firstWhere('ip', null);
+
+        $this->assertNotNull($unknown, 'the addressless group was dropped');
+        $this->assertSame(2, $unknown['visitors']);
+        $this->assertSame(4, $unknown['visits_count']);
+    }
+
+    /**
+     * `total` counts lines on the panel; `visitors` counts people. They differ by
+     * exactly the amount grouping concealed, so both are reported.
+     */
+    public function test_the_summary_separates_addresses_from_visitors(): void
+    {
+        Visit::query()->create([
+            'visitor_id' => str_repeat('f', 32),
+            'ip' => '203.0.113.7',
+            'device' => 'desktop',
+            'browser' => 'Chrome',
+            'os' => 'macOS',
+            'path' => 'offers',
+            'referrer' => null,
+            'locale' => 'en',
+            'visits_count' => 3,
+            'first_seen' => now()->subHours(5),
+            'last_seen' => now()->subMinutes(10),
+        ]);
+
+        $summary = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('summary');
+
+        $this->assertSame(2, $summary['total'], 'two addresses share the three visits');
+        $this->assertSame(3, $summary['visitors'], 'three identities are behind them');
+        $this->assertSame(8, $summary['page_views']);
     }
 
     public function test_the_device_filter_narrows_the_list(): void
