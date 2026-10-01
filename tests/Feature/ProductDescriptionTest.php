@@ -227,9 +227,11 @@ class ProductDescriptionTest extends TestCase
             ->assertOk()
             ->json('product.description_translations');
 
-        $this->assertCount(1, $offered);
-        $this->assertSame('ar', $offered[0]['locale']);
-        $this->assertSame('عود ملكي.', $offered[0]['description']);
+        // The two that were written, and nothing else. English resolves to the
+        // French copy through the fallback chain, so it is the language most
+        // likely to appear by accident.
+        $this->assertSame(['fr', 'ar'], array_column($offered, 'locale'));
+        $this->assertSame('عود ملكي.', collect($offered)->keyBy('locale')['ar']['description']);
     }
 
     public function test_it_never_offers_a_language_holding_another_languages_text(): void
@@ -242,17 +244,19 @@ class ProductDescriptionTest extends TestCase
             ->assertOk()
             ->json('product.description_translations');
 
-        // The regression: French only, so nothing to offer. English and Arabic
-        // both *resolve* to the French copy through the fallback chain, and
-        // offering those would be offering French twice under two names.
-        $this->assertSame([], $offered);
+        // The regression. Only French was written, so French is the only button:
+        // English and Arabic both *resolve* to that same copy through the
+        // fallback chain, and offering them would be offering French three times
+        // under three names.
+        $this->assertSame(['fr'], array_column($offered, 'locale'));
 
         foreach ($offered as $entry) {
-            $this->assertNotSame('Un oud intense.', $entry['description']);
+            $this->assertNotSame('en', $entry['locale']);
+            $this->assertNotSame('ar', $entry['locale']);
         }
     }
 
-    public function test_it_does_not_offer_the_language_the_page_is_already_in(): void
+    public function test_it_preselects_the_language_the_page_is_actually_showing(): void
     {
         $this->admin();
 
@@ -264,11 +268,89 @@ class ProductDescriptionTest extends TestCase
             ->assertOk()
             ->json('product.description_translations');
 
-        $locales = array_column($offered, 'locale');
+        $byLocale = collect($offered)->keyBy('locale');
 
-        $this->assertNotContains('fr', $locales);
-        $this->assertContains('ar', $locales);
-        $this->assertContains('en', $locales);
+        // The control preselects one button, so all three have to be offered —
+        // including the language the page is already in, or there is nothing to
+        // preselect and no way back to the copy the shopper arrived on.
+        $this->assertSame(['fr', 'ar', 'en'], array_keys($byLocale->all()));
+
+        $this->assertTrue($byLocale['fr']['is_current']);
+        $this->assertFalse($byLocale['ar']['is_current']);
+        $this->assertFalse($byLocale['en']['is_current']);
+    }
+
+    /**
+     * The preselection has to follow the text, not the URL.
+     *
+     * This is the case the whole `is_current` flag exists for. The page's
+     * description resolves through the fallback chain, so an Arabic URL for a
+     * product written only in French is displaying French copy. Preselecting
+     * "العربية" there would put a French paragraph under an Arabic label —
+     * precisely the failure the rest of this feature refuses to commit, and one
+     * a shopper has no way to detect: it looks like the store's own Arabic
+     * writing, so the description cannot be trusted to describe the product.
+     */
+    public function test_the_preselection_names_the_language_of_a_fallback_not_the_url(): void
+    {
+        $this->admin();
+
+        $this->create(['descriptions' => ['fr' => 'Un oud intense.']]);
+
+        $offered = $this->getJson('/api/ar/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        $byLocale = collect($offered)->keyBy('locale');
+
+        // Only French was ever written, so that is the only button — and it is
+        // the one marked current, because that is what the Arabic page is
+        // showing. No Arabic button at all, rather than one leading to a
+        // paragraph the store never wrote in Arabic.
+        $this->assertSame(['fr'], array_keys($byLocale->all()));
+        $this->assertTrue($byLocale['fr']['is_current']);
+        $this->assertSame('Français', $byLocale['fr']['name']);
+
+        // And the copy behind it is the French copy, so the label and the text
+        // agree.
+        $this->assertSame('Un oud intense.', $byLocale['fr']['description']);
+    }
+
+    public function test_the_preselection_follows_the_url_when_the_copy_is_genuine(): void
+    {
+        $this->admin();
+
+        $this->create([
+            'descriptions' => ['fr' => 'Un oud intense.', 'ar' => 'عود ملكي.'],
+        ]);
+
+        $offered = $this->getJson('/api/ar/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        $byLocale = collect($offered)->keyBy('locale');
+
+        $this->assertTrue($byLocale['ar']['is_current']);
+        $this->assertFalse($byLocale['fr']['is_current']);
+    }
+
+    /**
+     * A product with no description in any language has nothing to preselect,
+     * so nothing is offered. An empty list rather than a set of buttons that all
+     * point at nothing.
+     */
+    public function test_a_product_with_no_description_at_all_offers_no_buttons(): void
+    {
+        $this->admin();
+
+        $this->create(['descriptions' => []]);
+
+        $offered = $this->getJson('/api/fr/products/oud-royale')
+            ->assertOk()
+            ->json('product.description_translations');
+
+        $this->assertSame([], $offered);
+        $this->assertFalse(collect($offered)->contains('is_current', true));
     }
 
     /**
@@ -308,9 +390,12 @@ class ProductDescriptionTest extends TestCase
             ],
         ]);
 
-        $entry = $this->getJson('/api/fr/products/oud-royale')
+        // Keyed by locale rather than index: the list now includes the language
+        // the page is in, so position 0 is French and the assertion would be
+        // quietly testing the wrong description.
+        $entry = collect($this->getJson('/api/fr/products/oud-royale')
             ->assertOk()
-            ->json('product.description_translations.0');
+            ->json('product.description_translations'))->keyBy('locale')['ar'];
 
         // The same markdown-to-HTML the page's own description gets, so a
         // translated description is not a second-class one that loses its

@@ -109,8 +109,8 @@ class ProductResource extends JsonResource
     }
 
     /**
-     * This product's description in every language that has one of its own,
-     * for the "read this in another language" control on the product page.
+     * This product's description in every language that has one of its own, for
+     * the language control on the product page.
      *
      * Read straight off the translation rows rather than through
      * HasTranslations::translated(), and that is the whole point. translated()
@@ -121,17 +121,26 @@ class ProductResource extends JsonResource
      * nothing: it looks like the store wrote that and cannot be trusted to
      * describe its own product.
      *
-     * So only rows with a description of their own qualify, the language is
+     * So only rows with a description of their own qualify, and the language is
      * named in that language from the same locale table the rest of the store
-     * uses, and the current locale is left out because the page already shows
-     * it. Empty for a product nobody has translated, which is what the control
+     * uses. Empty for a product nobody has translated, which is what the control
      * needs to know in order not to offer anything.
      *
-     * @return array<int, array{locale: string, name: string, dir: string, description: string, description_html: string}>
+     * The current language is in the list too, flagged `is_current`, because
+     * the control needs a button to preselect — and it can only preselect the
+     * truth. The page's description comes from the fallback chain, so on a
+     * product written only in French the Arabic page is showing French copy. The
+     * flag is set against the locale that copy was actually found in, not
+     * against the locale that was asked for, so the preselected button says
+     * "Français" there. Anything else would put a French paragraph under an
+     * Arabic label, which is the mistake above all over again.
+     *
+     * @return array<int, array{locale: string, name: string, dir: string, description: string, description_html: string, is_current: bool}>
      */
     private function descriptionTranslations(string $currentLocale): array
     {
         $locales = config('chamma.locales');
+        $showing = $this->descriptionLocale($currentLocale);
 
         $available = [];
 
@@ -139,9 +148,8 @@ class ProductResource extends JsonResource
             $code = (string) $translation->locale;
             $text = (string) $translation->description;
 
-            // Unknown locale, the one already on screen, or copy that was never
-            // written: nothing to offer.
-            if (! isset($locales[$code]) || $code === $currentLocale || trim($text) === '') {
+            // Unknown locale, or copy that was never written: nothing to offer.
+            if (! isset($locales[$code]) || trim($text) === '') {
                 continue;
             }
 
@@ -151,15 +159,60 @@ class ProductResource extends JsonResource
                 'dir' => $locales[$code]['dir'],
                 'description' => $text,
                 'description_html' => Markdown::toHtml($text),
+                'is_current' => $code === $showing,
             ];
         }
 
         // A predictable order, so the control does not reshuffle between two
-        // loads of the same product.
+        // loads of the same product — and, more importantly, does not reshuffle
+        // when the shopper switches language. Ordering by locale table rather
+        // than putting the current one first keeps the buttons where the
+        // shopper last saw them; the preselection is what says which is active.
         usort($available, fn (array $a, array $b) => array_search($a['locale'], array_keys($locales), true)
             <=> array_search($b['locale'], array_keys($locales), true));
 
         return $available;
+    }
+
+    /**
+     * Which language the description on the page is actually written in.
+     *
+     * Walks the same chain as HasTranslations::translated() — requested, then
+     * default, then fallback, then whatever exists — and returns the locale
+     * whose row satisfied it. Null when the product has no description in any
+     * language, in which case there is nothing for the control to preselect.
+     *
+     * The order here has to stay identical to translated()'s. It is the one
+     * place where a divergence would be silent: translated() would return the
+     * default locale's copy while this reported the requested one, and the
+     * storefront would confidently label a French paragraph as the language the
+     * shopper is reading.
+     */
+    private function descriptionLocale(string $requested): ?string
+    {
+        $candidates = array_values(array_unique(array_filter([
+            $requested,
+            config('chamma.default_locale'),
+            config('chamma.fallback_locale'),
+        ])));
+
+        foreach ($candidates as $candidate) {
+            $row = $this->translations->firstWhere('locale', $candidate);
+
+            if ($row !== null && trim((string) $row->description) !== '') {
+                return $candidate;
+            }
+        }
+
+        // translated()'s last resort: any row with a description, in whatever
+        // order they were loaded.
+        foreach ($this->translations as $translation) {
+            if (trim((string) $translation->description) !== '') {
+                return (string) $translation->locale;
+            }
+        }
+
+        return null;
     }
 
     /**
