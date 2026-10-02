@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\V1\Admin\BrandController as AdminBrandController;
+use App\Http\Controllers\Api\V1\Admin\CartController as AdminCartController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\V1\Admin\UploadController;
 use App\Http\Controllers\Api\V1\Admin\VisitController as AdminVisitController;
 use App\Http\Controllers\Api\V1\Admin\WaitlistController as AdminWaitlistController;
 use App\Http\Controllers\Api\V1\BrandController;
+use App\Http\Controllers\Api\V1\CartController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CheckoutController;
 use App\Http\Controllers\Api\V1\HomeController;
@@ -78,6 +80,13 @@ foreach (array_keys(config('chamma.locales')) as $locale) {
                 ->middleware('throttle:waitlist')
                 ->name('waitlist.store');
 
+            // How a cart becomes visible before it is bought. A POST, so it is
+            // deliberately NOT on the `track` middleware: that is for page views,
+            // and this fires on every add, remove and quantity change within a
+            // single visit. The identity is read from the same first-party cookie
+            // the tracker issues, so the shopper is not keyed on their IP.
+            Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+
             // An order lookup is a page view like any other, but a failed guess
             // is not a visit worth counting, so it is left untracked.
             Route::get('/orders/{reference}', [CheckoutController::class, 'show'])->name('orders.show');
@@ -142,6 +151,11 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         // or deletes them, because a visitor record is data about a person
         // rather than content to be managed.
         Route::get('/visits', [AdminVisitController::class, 'index'])->name('visits.index');
+
+        // Carts that were filled and never checked out. Read-only, like visits:
+        // a cart row is a record of what an unidentified person was about to buy,
+        // so there is no delete button. Pruning is `php artisan carts:purge`.
+        Route::get('/carts', [AdminCartController::class, 'index'])->name('carts.index');
 
         // The back-in-stock list. Read, mark-as-called, and add a number taken
         // over the phone. No delete: a number here is a person who gave it, and

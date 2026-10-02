@@ -9,6 +9,7 @@ return [
         'product_unavailable' => "Ce produit n'est plus disponible.",
         'insufficient_stock' => 'Stock insuffisant pour :product.',
         'empty_cart' => 'Votre panier est vide.',
+        'cart_too_large' => 'Ce panier contient trop d\'articles.',
         'payment_method_unavailable' => 'Ce mode de paiement n’est pas disponible.',
         'checkout_failed' => 'La commande n\'a pas pu être enregistrée. Réessayez dans un instant.',
         'order_create_failed' => 'La commande n\'a pas pu être enregistrée. Vérifiez le stock et réessayez.',
@@ -35,7 +36,7 @@ return [
         'bank_transfer_hint' => 'Payez par virement, puis envoyez le reçu sur WhatsApp au :whatsapp en indiquant votre référence de commande.',
         'bank_details' => 'Coordonnées bancaires',
         'send_receipt' => 'Envoyer le reçu sur WhatsApp',
-        'receipt_message' => "Bonjour, je viens de passer la commande :reference (:amount MAD) pour :city. Voici mon reçu de virement :",
+        'receipt_message' => 'Bonjour, je viens de passer la commande :reference (:amount MAD) pour :city. Voici mon reçu de virement :',
     ],
 
     'order_status' => [

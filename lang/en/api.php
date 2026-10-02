@@ -9,6 +9,7 @@ return [
         'product_unavailable' => 'This product is no longer available.',
         'insufficient_stock' => 'Not enough stock for: :product.',
         'empty_cart' => 'Your cart is empty.',
+        'cart_too_large' => 'This cart has too many items.',
         'payment_method_unavailable' => 'This payment method is not available.',
         'checkout_failed' => 'The order could not be placed. Please try again in a moment.',
         'order_create_failed' => 'The order could not be recorded. Check the stock and try again.',
@@ -35,7 +36,7 @@ return [
         'bank_transfer_hint' => 'Pay by bank transfer, then send the receipt on WhatsApp to :whatsapp, quoting your order reference.',
         'bank_details' => 'Bank details',
         'send_receipt' => 'Send the receipt on WhatsApp',
-        'receipt_message' => "Hello, I just placed order :reference (:amount MAD) for :city. Here is my bank transfer receipt:",
+        'receipt_message' => 'Hello, I just placed order :reference (:amount MAD) for :city. Here is my bank transfer receipt:',
     ],
 
     'order_status' => [

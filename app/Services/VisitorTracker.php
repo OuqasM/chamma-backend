@@ -135,6 +135,41 @@ class VisitorTracker
     }
 
     /**
+     * The identity for this request: the existing cookie's token, or a new one.
+     *
+     * Public because routes that are not page views need the same identity.
+     * `TrackVisitor` only wraps storefront GETs, so a cart sync — a POST — would
+     * otherwise have no way to recognise the shopper and every cart would be a
+     * new anonymous row. Reusing the token means one person is one person across
+     * the whole API, and the storefront never has to hold or forward a
+     * cart key of its own.
+     *
+     * The token is minted here but not attached to the response; the caller
+     * adds it with `identityCookieFor`, so the token the caller acted on is the
+     * token the browser is handed. A request whose response is a redirect or an
+     * error does not need one.
+     */
+    public function identity(Request $request): string
+    {
+        return $this->resolveVisitorId($request);
+    }
+
+    /**
+     * The identity cookie for a token that has already been resolved.
+     *
+     * Takes the id as an argument rather than resolving it again, which is the
+     * whole point: a request that arrived with no cookie would otherwise be
+     * given one token by the caller and a *different* one here, and the cart
+     * keyed on the first would never be found again on the next request. That is
+     * not a hypothetical — it is every shopper whose first action on the site is
+     * to add something to the basket.
+     */
+    public function identityCookieFor(string $visitorId, Request $request): SymfonyCookie
+    {
+        return $this->identityCookie($visitorId, $request);
+    }
+
+    /**
      * Reads the identity from the cookie, or mints one.
      *
      * A malformed or absent cookie gets a fresh token rather than being
