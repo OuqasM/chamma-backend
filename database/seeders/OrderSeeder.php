@@ -4,8 +4,10 @@ namespace Database\Seeders;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\Product;
 use App\Services\ShippingService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 /**
  * A handful of realistic orders so the admin dashboard, order filters and status
@@ -21,7 +23,7 @@ class OrderSeeder extends Seeder
             return;
         }
 
-        $products = \App\Models\Product::query()
+        $products = Product::query()
             ->with('images', 'translations')
             ->where('stock', '>', 0)
             ->orderBy('id')
@@ -33,10 +35,10 @@ class OrderSeeder extends Seeder
 
         $customers = [
             ['locale' => 'fr', 'first' => 'Salma', 'last' => 'Benhaddou', 'phone' => '0612345678', 'city' => 'Casablanca', 'address' => '45, rue Ibn Batouta, Appt 8', 'email' => 'salma.benhaddou@example.ma', 'status' => OrderStatus::Delivered, 'age' => 21],
-            ['locale' => 'ar', 'first' => 'يوسف', 'last' => 'العلوي', 'phone' => '0661876543', 'city' => 'Marrakech', 'address' => 'شارع محمد الخامس، رقم 12، الطابق 3', 'email' => null, 'status' => OrderStatus::Shipped, 'age' => 6],
-            ['locale' => 'fr', 'first' => 'Mehdi', 'last' => 'Tazi', 'phone' => '0675123498', 'city' => 'Rabat', 'address' => '7, avenue Ibn Sina, Appt 4', 'email' => 'mehdi.tazi@example.ma', 'status' => OrderStatus::Preparing, 'age' => 3],
+            ['locale' => 'ar', 'first' => 'يوسف', 'last' => 'العلوي', 'phone' => '0661876543', 'city' => 'Marrakech', 'address' => 'شارع محمد الخامس، رقم 12، الطابق 3', 'email' => null, 'status' => OrderStatus::Confirmed, 'age' => 6],
+            ['locale' => 'fr', 'first' => 'Mehdi', 'last' => 'Tazi', 'phone' => '0675123498', 'city' => 'Rabat', 'address' => '7, avenue Ibn Sina, Appt 4', 'email' => 'mehdi.tazi@example.ma', 'status' => OrderStatus::Confirmed, 'age' => 3],
             ['locale' => 'fr', 'first' => 'Nadia', 'last' => 'Cherkaoui', 'phone' => '0620987654', 'city' => 'Fès', 'address' => '33, rue de la Fontaine, Quartier Batha', 'email' => 'nadia.cherkaoui@example.ma', 'status' => OrderStatus::Confirmed, 'age' => 1],
-            ['locale' => 'ar', 'first' => 'خديجة', 'last' => 'بلقاسم', 'phone' => '0655443322', 'city' => 'Agadir', 'address' => 'شارع الحسن الثاني، إقامة النخيل، رقم 5', 'email' => null, 'status' => OrderStatus::Pending, 'age' => 0],
+            ['locale' => 'ar', 'first' => 'خديجة', 'last' => 'بلقاسم', 'phone' => '0655443322', 'city' => 'Agadir', 'address' => 'شارع الحسن الثاني، إقامة النخيل، رقم 5', 'email' => null, 'status' => OrderStatus::New, 'age' => 0],
             ['locale' => 'fr', 'first' => 'Anas', 'last' => 'El Fassi', 'phone' => '0644556677', 'city' => 'Oujda', 'address' => '15, avenue Hassan II', 'email' => 'anas.elfassi@example.ma', 'status' => OrderStatus::Cancelled, 'age' => 34],
         ];
 
@@ -53,7 +55,7 @@ class OrderSeeder extends Seeder
             $items = [];
 
             foreach ($lines as $line) {
-                /** @var \App\Models\Product $product */
+                /** @var Product $product */
                 $product = $line['product'];
                 $quantity = $line['quantity'];
                 $lineTotal = round((float) $product->price * $quantity, 2);
@@ -104,8 +106,8 @@ class OrderSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Product>  $products
-     * @return list<array{product: \App\Models\Product, quantity: int}>
+     * @param  Collection<int, Product>  $products
+     * @return list<array{product: Product, quantity: int}>
      */
     private function lines($products, int $count): array
     {

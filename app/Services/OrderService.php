@@ -5,10 +5,8 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\ProductTranslation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Turns a guest cart into a Cash-on-Delivery order.
@@ -138,7 +136,7 @@ class OrderService
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total' => round($subtotal + $shippingCost, 2),
-                'status' => OrderStatus::Pending,
+                'status' => OrderStatus::New,
             ]);
 
             $order->items()->createMany($items);

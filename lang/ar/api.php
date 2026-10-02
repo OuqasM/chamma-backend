@@ -39,10 +39,8 @@ return [
     ],
 
     'order_status' => [
-        'pending' => 'قيد الانتظار',
+        'new' => 'جديدة',
         'confirmed' => 'تم التأكيد',
-        'preparing' => 'قيد التحضير',
-        'shipped' => 'تم الشحن',
         'delivered' => 'تم التسليم',
         'cancelled' => 'ملغاة',
     ],

@@ -4,10 +4,8 @@ namespace App\Enums;
 
 enum OrderStatus: string
 {
-    case Pending = 'pending';
+    case New = 'new';
     case Confirmed = 'confirmed';
-    case Preparing = 'preparing';
-    case Shipped = 'shipped';
     case Delivered = 'delivered';
     case Cancelled = 'cancelled';
 
@@ -24,10 +22,8 @@ enum OrderStatus: string
     public function color(): string
     {
         return match ($this) {
-            self::Pending => 'amber',
+            self::New => 'amber',
             self::Confirmed => 'sky',
-            self::Preparing => 'violet',
-            self::Shipped => 'indigo',
             self::Delivered => 'emerald',
             self::Cancelled => 'rose',
         };
@@ -41,10 +37,8 @@ enum OrderStatus: string
     public function next(): ?self
     {
         return match ($this) {
-            self::Pending => self::Confirmed,
-            self::Confirmed => self::Preparing,
-            self::Preparing => self::Shipped,
-            self::Shipped => self::Delivered,
+            self::New => self::Confirmed,
+            self::Confirmed => self::Delivered,
             self::Delivered, self::Cancelled => null,
         };
     }

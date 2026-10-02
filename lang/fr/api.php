@@ -39,10 +39,8 @@ return [
     ],
 
     'order_status' => [
-        'pending' => 'En attente',
+        'new' => 'Nouvelle',
         'confirmed' => 'Confirmée',
-        'preparing' => 'En préparation',
-        'shipped' => 'Expédiée',
         'delivered' => 'Livrée',
         'cancelled' => 'Annulée',
     ],

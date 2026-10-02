@@ -9,7 +9,6 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\App;
 
 class DashboardController extends Controller
 {
@@ -33,7 +32,7 @@ class DashboardController extends Controller
                 ],
                 [
                     'key' => 'pending',
-                    'value' => (clone $orders)->whereIn('status', [OrderStatus::Pending->value, OrderStatus::Confirmed->value, OrderStatus::Preparing->value])->count(),
+                    'value' => (clone $orders)->whereIn('status', [OrderStatus::New->value, OrderStatus::Confirmed->value])->count(),
                 ],
                 [
                     'key' => 'products',

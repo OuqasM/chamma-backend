@@ -89,7 +89,7 @@ class AdminOrderCreationTest extends TestCase
             'customer_name' => 'Amina Benali',
             'first_name' => 'Amina',
             'last_name' => 'Benali',
-            'status' => 'pending',
+            'status' => 'new',
             'payment_status' => 'pending',
         ]);
     }
