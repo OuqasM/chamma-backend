@@ -9,7 +9,6 @@ return [
         'product_unavailable' => 'هذا المنتج لم يعد متوفراً.',
         'insufficient_stock' => 'الكمية المتوفرة من :product غير كافية.',
         'empty_cart' => 'سلة التسوق فارغة.',
-        'cart_too_large' => 'سلة التسوق تحتوي على عناصر كثيرة جداً.',
         'payment_method_unavailable' => 'طريقة الدفع هذه غير متوفرة حالياً.',
         'checkout_failed' => 'تعذّر تسجيل الطلب. حاول بعد قليل.',
         'order_create_failed' => 'تعذّر تسجيل الطلب. تحقّق من المخزون وحاول مجدداً.',
@@ -36,7 +35,7 @@ return [
         'bank_transfer_hint' => 'ادفع عبر تحويل بنكي، ثم أرسل الوصل عبر واتساب على الرقم :whatsapp مع ذكر مرجع طلبك.',
         'bank_details' => 'المعلومات البنكية',
         'send_receipt' => 'إرسال الوصل عبر واتساب',
-        'receipt_message' => 'مرحباً،لقد أنشأت الطلب :reference (:amount درهم) إلى :city. إليك وصل التحويل البنكي:',
+        'receipt_message' => "مرحباً،لقد أنشأت الطلب :reference (:amount درهم) إلى :city. إليك وصل التحويل البنكي:",
     ],
 
     'order_status' => [

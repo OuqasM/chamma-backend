@@ -5,9 +5,10 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductTranslation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Turns a guest cart into a Cash-on-Delivery order.
@@ -18,10 +19,7 @@ use Illuminate\Support\Facades\Log;
  */
 class OrderService
 {
-    public function __construct(
-        private readonly ShippingService $shipping,
-        private readonly CartService $carts,
-    ) {}
+    public function __construct(private readonly ShippingService $shipping) {}
 
     /**
      * Cart subtotal for the live delivery quote.
@@ -65,15 +63,10 @@ class OrderService
     /**
      * @param  array<int, array{product_id:int, quantity:int}>  $lines
      * @param  array<string, mixed>  $customer
-     * @param  string|null  $visitorId  Identity token of the shopper whose cart
-     *                                  this order came from, or null when the
-     *                                  order was typed in by hand in the panel —
-     *                                  which is why it is optional rather than
-     *                                  required.
      */
-    public function place(array $lines, array $customer, string $locale, ?string $visitorId = null): Order
+    public function place(array $lines, array $customer, string $locale): Order
     {
-        $order = DB::transaction(function () use ($lines, $customer, $locale) {
+        return DB::transaction(function () use ($lines, $customer, $locale) {
             $ids = collect($lines)->pluck('product_id')->unique()->all();
 
             /** @var Collection<int, Product> $products */
@@ -152,24 +145,6 @@ class OrderService
 
             return $order->load('items');
         });
-
-        // The cart link is written after the order has committed, and outside
-        // the transaction on purpose. An order that failed to record because a
-        // report row could not be written would be a lost sale; a cart that
-        // never got linked is one unconverted line in the owner's report. The
-        // asymmetry is the whole reason this is not inside the closure above.
-        if ($visitorId !== null) {
-            try {
-                $this->carts->markConverted($visitorId, (int) $order->id, $locale);
-            } catch (\Throwable $e) {
-                Log::warning('cart_convert_failed', [
-                    'order' => $order->reference,
-                    'message' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        return $order;
     }
 
     /**

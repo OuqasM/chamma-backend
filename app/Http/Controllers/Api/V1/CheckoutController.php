@@ -11,7 +11,6 @@ use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
 use App\Services\ShippingZoneService;
-use App\Services\VisitorTracker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -25,7 +24,6 @@ class CheckoutController extends Controller
         private readonly ShippingZoneService $zones,
         private readonly PaymentService $payments,
         private readonly OrderNotifier $notifier,
-        private readonly VisitorTracker $tracker,
     ) {}
 
     /**
@@ -43,11 +41,6 @@ class CheckoutController extends Controller
                 $request->validated()['items'],
                 $customer,
                 $locale,
-                // Read from the identity cookie rather than taken from the
-                // request body, so a client cannot claim a cart that belongs to
-                // somebody else's token and mark it converted. Null is fine: a
-                // shopper whose cart sync never landed still gets their order.
-                $this->tracker->identity($request),
             );
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
