@@ -22,7 +22,7 @@ class BrandController extends Controller
     public function index(): AnonymousResourceCollection
     {
         return AdminBrandResource::collection(
-            Brand::query()->with('translations')->withCount('products')->orderBy('position')->get()
+            Brand::query()->with('translations')->withCount('products')->ordered()->get()
         );
     }
 
