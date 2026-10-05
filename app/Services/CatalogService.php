@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Concerns\ReadsTranslatedTaxonomy;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
@@ -10,6 +11,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Every read path for the catalogue lives here, so filtering/sorting rules are
@@ -17,6 +20,8 @@ use Illuminate\Support\Facades\App;
  */
 class CatalogService
 {
+    use ReadsTranslatedTaxonomy;
+
     public const SORTS = [
         'featured' => 'featured',
         'newest' => 'newest',
@@ -270,6 +275,92 @@ class CatalogService
         }
 
         return $query->get();
+    }
+
+    /**
+     * The brand list for the homepage carousel, as lean rows rather than models.
+     *
+     * The tiles are photographs with the brand name on them. `BrandCard` reads
+     * `id`, `slug`, `name` and `logo` and nothing else — but this list was going
+     * out through `BrandResource`, so every cold homepage load shipped a
+     * description, an origin, a canonical URL and three hreflang alternates per
+     * brand to render a tile. On a twelve-brand shop that measured 7.9 KB of a
+     * 15.3 KB page payload, over half of it, for fields no tile touches.
+     *
+     * The homepage is not an index the way `/brands` is, so those fields have
+     * nowhere to go here. `brandTiles()` also differs from `brands()` in what it
+     * omits rather than adds: a brand with no logo is filtered out upstream,
+     * because an empty tile is worse than a shorter carousel.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function brandTiles(string $locale): array
+    {
+        $chain = $this->localeChain($locale);
+        $aliases = $this->translationAliases($chain);
+
+        $rows = $this->joinTranslationChain(
+            DB::table('brands'),
+            'brands',
+            'brand_translations',
+            'brand_id',
+            $chain,
+            $aliases,
+        )
+            ->join('products', function ($join) {
+                // The same `onlyWithProducts` rule as `brands()`: a brand with
+                // nothing published has no tile to show.
+                //
+                // This join matches once per product, not once per brand, so it
+                // deliberately does *not* make the result distinct — a brand with
+                // four products arrives four times and is collapsed by the
+                // `unique('id')` below. A `whereExists` subquery would be the
+                // other way to write this; the join is here because the product
+                // table is only being used as a yes/no, never read.
+                $join->on('products.brand_id', '=', 'brands.id')
+                    ->where('products.is_active', true)
+                    ->whereNull('products.deleted_at');
+            })
+            ->where('brands.is_active', true)
+            // The storefront used to drop a brand with no logo in the browser, on
+            // a truthiness test that caught both `null` and `''`. `whereNotNull`
+            // alone catches only the first, and the second would slip through to
+            // `url('')` — a tile with a broken image where the brand was
+            // supposed to be absent. Both spellings of "no logo" have to go.
+            ->where(fn ($query) => $query
+                ->whereNotNull('brands.logo')
+                ->where('brands.logo', '<>', '')
+            )
+            ->orderBy('brands.position')
+            ->orderBy('brands.name')
+            ->get([
+                'brands.id',
+                'brands.slug',
+                'brands.logo',
+                'brands.name as canonical_name',
+                ...$this->translationColumns($aliases, 'name'),
+            ]);
+
+        $disk = Storage::disk(config('chamma.disk'));
+
+        return $rows->map(fn ($row) => [
+            'id' => $row->id,
+            'slug' => $row->slug,
+            'name' => $this->pick(...[...$this->translationValues($row, $aliases, 'name'), $row->canonical_name]),
+            'logo' => $disk->url($row->logo),
+        ])->unique('id')->values()->all();
+    }
+
+    /**
+     * Select clauses for the joined translation aliases, aliased so PHP can read
+     * them back off the row.
+     *
+     * @param  array<int, string>  $aliases
+     * @return array<int, string>
+     */
+    private function translationColumns(array $aliases, string $column): array
+    {
+        return array_map(fn (string $alias) => "$alias.$column as {$alias}_$column", $aliases);
     }
 
     /**

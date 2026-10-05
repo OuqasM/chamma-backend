@@ -43,6 +43,11 @@ class BrandOrderingTest extends TestCase
      * only list brands that have something to sell — a brand with no products is
      * absent from those two lists entirely, which would leave the assertion
      * measuring an empty array.
+     *
+     * Each also gets a logo, because the home tiles now drop a brand without one
+     * in SQL rather than in the browser. That filter used to be the storefront's
+     * job; it is the API's now, so a seed without logos measures an empty array
+     * and the ordering assertion below would pass for the wrong reason.
      */
     private function seedBrands(): void
     {
@@ -51,7 +56,10 @@ class BrandOrderingTest extends TestCase
             ['name' => 'Aesop', 'position' => 3],
             ['name' => 'Mancora', 'position' => 2],
         ] as $brand) {
-            $model = Brand::create($brand + ['slug' => Str::slug($brand['name'])]);
+            $model = Brand::create($brand + [
+                'slug' => Str::slug($brand['name']),
+                'logo' => 'brands/'.Str::slug($brand['name']).'.svg',
+            ]);
 
             Product::create([
                 'brand_id' => $model->id,

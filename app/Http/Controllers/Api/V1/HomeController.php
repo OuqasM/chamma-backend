@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\BrandResource;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\ProductResource;
 use App\Services\CatalogService;
@@ -37,9 +36,7 @@ class HomeController extends Controller
                 'image' => asset_path($hero),
                 'eyebrow' => __('api.store.tagline', [], $locale),
             ],
-            'brands' => BrandResource::collection(
-                $this->catalog->brands(onlyWithProducts: true)
-            ),
+            'brands' => $this->catalog->brandTiles($locale),
             'categories' => CategoryResource::collection(
                 $this->catalog->categories(onlyWithProducts: true)
             ),

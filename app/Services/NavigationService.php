@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Query\Builder;
+use App\Concerns\ReadsTranslatedTaxonomy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +36,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class NavigationService
 {
+    use ReadsTranslatedTaxonomy;
+
     /**
      * Long enough to absorb a browsing session, short enough that an edit shows
      * up on its own even if a flush were ever missed.
@@ -77,7 +79,7 @@ class NavigationService
         $chain = $this->localeChain($locale);
         $aliases = $this->translationAliases($chain);
 
-        $query = $this->joinTranslations(DB::table('brands'), 'brands', 'brand_translations', 'brand_id', $chain, $aliases)
+        $query = $this->joinTranslationChain(DB::table('brands'), 'brands', 'brand_translations', 'brand_id', $chain, $aliases)
             ->where('brands.is_active', true)
             // `Brand::scopeOrdered()`: position first, then the canonical name.
             ->orderBy('brands.position')
@@ -97,8 +99,8 @@ class NavigationService
             // last resort — the same precedence `translated()` applies. A brand
             // with no translation row at all still shows its latin name here,
             // which is what the model does too.
-            'name' => $this->pick(...[...$this->columnValues($row, $aliases, '_name'), $row->canonical_name]),
-            'tagline' => $this->pick(...$this->columnValues($row, $aliases, '_tagline')),
+            'name' => $this->pick(...[...$this->translationValues($row, $aliases, 'name'), $row->canonical_name]),
+            'tagline' => $this->pick(...$this->translationValues($row, $aliases, 'tagline')),
             'logo' => $row->logo ? Storage::disk(config('chamma.disk'))->url($row->logo) : null,
         ])->all();
     }
@@ -111,7 +113,7 @@ class NavigationService
         $chain = $this->localeChain($locale);
         $aliases = $this->translationAliases($chain);
 
-        $query = $this->joinTranslations(DB::table('categories'), 'categories', 'category_translations', 'category_id', $chain, $aliases)
+        $query = $this->joinTranslationChain(DB::table('categories'), 'categories', 'category_translations', 'category_id', $chain, $aliases)
             ->where('categories.is_active', true)
             // `Category::scopeOrdered()`: position first, then id.
             ->orderBy('categories.position')
@@ -128,99 +130,12 @@ class NavigationService
             'slug' => $row->slug,
             // Categories have no canonical name column, so unlike a brand there is
             // no last resort: an untranslated category has no name to show.
-            'name' => $this->pick(...$this->columnValues($row, $aliases, '_name')),
+            'name' => $this->pick(...$this->translationValues($row, $aliases, 'name')),
             // Only the mega sheet reads this, as the category tile's photograph.
             'image' => $row->image
                 ? ['url' => Storage::disk(config('chamma.disk'))->url($row->image)]
                 : null,
         ])->all();
-    }
-
-    /**
-     * One left join per candidate locale, rather than a single join filtered with
-     * `whereIn`.
-     *
-     * `whereIn` looks equivalent and is not: a brand translated into both the
-     * default and the fallback locale matches twice and appears twice in the
-     * menu. `(entity_id, locale)` is unique, so one alias per locale keeps the
-     * result at one row per entity — and the aliases come back in chain order,
-     * so `pick()` reads the fallback chain top to bottom.
-     *
-     * @param  array<int, string>  $chain
-     * @param  array<int, string>  $aliases
-     */
-    private function joinTranslations(
-        Builder $query,
-        string $parent,
-        string $table,
-        string $foreignKey,
-        array $chain,
-        array $aliases,
-    ): Builder {
-        foreach ($chain as $index => $candidate) {
-            $alias = $aliases[$index];
-
-            $query->leftJoin("{$table} as {$alias}", function ($join) use ($alias, $foreignKey, $parent, $candidate) {
-                $join->on("{$alias}.{$foreignKey}", '=', "{$parent}.id")
-                    ->where("{$alias}.locale", '=', $candidate);
-            });
-        }
-
-        return $query;
-    }
-
-    /**
-     * @param  array<int, string>  $chain
-     * @return array<int, string>
-     */
-    private function translationAliases(array $chain): array
-    {
-        return array_map(fn (int $index) => 'tr'.$index, array_keys($chain));
-    }
-
-    /**
-     * @param  array<int, string>  $aliases
-     * @return array<int, mixed>
-     */
-    private function columnValues(object $row, array $aliases, string $suffix): array
-    {
-        return array_map(fn (string $alias) => $row->{$alias.$suffix}, $aliases);
-    }
-
-    /**
-     * The requested locale, then the configured default, then the fallback.
-     *
-     * Deduplicated, because a locale that is also the default would otherwise be
-     * joined twice and the same string would be selected twice.
-     *
-     * @return array<int, string>
-     */
-    private function localeChain(string $locale): array
-    {
-        return array_values(array_unique(array_filter([
-            $locale,
-            (string) config('chamma.default_locale'),
-            (string) config('chamma.fallback_locale'),
-        ])));
-    }
-
-    /**
-     * First value that is neither null nor an empty string.
-     *
-     * The empty-string check is the point: `HasTranslations::translated()`
-     * treats '' as missing and keeps walking the chain, so a pick that stopped
-     * at '' would render a blank menu entry where the model showed the next
-     * language.
-     */
-    private function pick(mixed ...$values): ?string
-    {
-        foreach ($values as $value) {
-            if ($value !== null && $value !== '') {
-                return (string) $value;
-            }
-        }
-
-        return null;
     }
 
     private function cacheKey(string $locale): string
