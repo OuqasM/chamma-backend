@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Concerns\HasSingleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CategoryRequest;
-
 use App\Models\Category;
 use App\Services\ImageLibrary;
+use App\Services\NavigationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,10 @@ class CategoryController extends Controller
 {
     use HasSingleName;
 
-    public function __construct(private readonly ImageLibrary $images) {}
+    public function __construct(
+        private readonly ImageLibrary $images,
+        private readonly NavigationService $navigation,
+    ) {}
 
     public function index(): AnonymousResourceCollection
     {
@@ -51,6 +54,9 @@ class CategoryController extends Controller
         // Refresh so column defaults that were not submitted are reflected.
         $category->refresh();
 
+        // The shell's menu is cached per locale and this row is in it.
+        $this->navigation->flush();
+
         return response()->json(['category' => new AdminCategoryResource($category->load('translations'))], 201);
     }
 
@@ -80,6 +86,9 @@ class CategoryController extends Controller
             $this->ensureImage($category);
         });
 
+        // The shell's menu is cached per locale and this row is in it.
+        $this->navigation->flush();
+
         return response()->json(['category' => new AdminCategoryResource($category->fresh('translations'))]);
     }
 
@@ -90,6 +99,9 @@ class CategoryController extends Controller
         }
 
         $category->delete();
+
+        // The category is gone from every locale's menu.
+        $this->navigation->flush();
 
         return response()->json(['message' => 'deleted']);
     }

@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Concerns\HasSingleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BrandRequest;
-
 use App\Models\Brand;
 use App\Services\ImageLibrary;
+use App\Services\NavigationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,10 @@ class BrandController extends Controller
 {
     use HasSingleName;
 
-    public function __construct(private readonly ImageLibrary $images) {}
+    public function __construct(
+        private readonly ImageLibrary $images,
+        private readonly NavigationService $navigation,
+    ) {}
 
     public function index(): AnonymousResourceCollection
     {
@@ -50,6 +53,9 @@ class BrandController extends Controller
         // Refresh so column defaults that were not submitted are reflected.
         $brand->refresh();
 
+        // The shell's menu is cached per locale and this row is in it.
+        $this->navigation->flush();
+
         return response()->json(['brand' => new AdminBrandResource($brand->load('translations'))], 201);
     }
 
@@ -79,6 +85,9 @@ class BrandController extends Controller
             $this->syncTranslations($brand, $request);
         });
 
+        // The shell's menu is cached per locale and this row is in it.
+        $this->navigation->flush();
+
         return response()->json(['brand' => new AdminBrandResource($brand->fresh('translations'))]);
     }
 
@@ -92,6 +101,9 @@ class BrandController extends Controller
 
         $this->images->delete($brand->logo);
         $brand->delete();
+
+        // The brand is gone from every locale's menu.
+        $this->navigation->flush();
 
         return response()->json(['message' => 'deleted']);
     }

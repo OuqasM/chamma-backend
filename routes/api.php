@@ -54,7 +54,11 @@ foreach (array_keys(config('chamma.locales')) as $locale) {
         ->group(function () {
             // Locale scoped: the shell needs translated menu labels on first
             // paint, so it is not worth a second request.
-            Route::get('/navigation', NavigationController::class)->middleware('track')
+            //
+            // Not tracked: it is an API bootstrap the shell refetches per page
+            // and per language, not a page a visitor can land on. See
+            // NavigationController.
+            Route::get('/navigation', NavigationController::class)
                 ->name('navigation');
 
             Route::get('/home', HomeController::class)->middleware('track')->name('home');
