@@ -23,6 +23,7 @@ return [
 
     'store' => [
         'tagline' => 'Parfums et cosmétiques',
+        'original' => 'Tous nos produits sont 100% originaux',
         'nationwide' => 'Livraison partout au Maroc',
         'cod' => 'Paiement à la livraison',
         'order_confirmed' => 'Merci ! Votre commande :reference est confirmée.',

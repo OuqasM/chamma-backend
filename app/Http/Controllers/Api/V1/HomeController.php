@@ -46,6 +46,7 @@ class HomeController extends Controller
             'new_arrivals' => ProductResource::collection($this->catalog->newArrivals(4, $locale)),
             'offers' => ProductResource::collection($this->catalog->onOffer(4, $locale)),
             'promises' => [
+                'original' => __('api.store.original', [], $locale),
                 'nationwide' => __('api.store.nationwide', [], $locale),
                 'cod' => __('api.store.cod', [], $locale),
                 'estimate' => $this->shipping->estimate($locale),

@@ -23,6 +23,7 @@ return [
 
     'store' => [
         'tagline' => 'Perfumes and cosmetics',
+        'original' => 'All our products are 100% original',
         'nationwide' => 'Delivery across Morocco',
         'cod' => 'Cash on delivery',
         'order_confirmed' => 'Thank you! Your order :reference is confirmed.',
