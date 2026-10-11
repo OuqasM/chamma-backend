@@ -37,6 +37,9 @@ class ProductRequest extends FormRequest
             'stock' => ['required', 'integer', 'min:0', 'max:100000'],
             'size' => ['nullable', 'string', 'max:60'],
             'gender' => ['nullable', 'string', Rule::in(['women', 'men', 'unisex'])],
+            'has_variants' => ['nullable', 'boolean'],
+            'variants' => ['nullable', 'array'],
+            'variants.*.name' => ['required', 'string', 'max:120'],
             'is_active' => ['nullable', 'boolean'],
             // Independent of `is_active`: this one only drives the out-of-stock
             // label, it does not hide the product.

@@ -20,6 +20,7 @@ class OrderItem extends Model
         'product_name',
         'product_slug',
         'product_sku',
+        'variant',
         'product_image',
         'locale',
         'unit_price',

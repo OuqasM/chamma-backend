@@ -32,6 +32,7 @@ class Product extends Model
         'stock',
         'size',
         'gender',
+        'has_variants',
         'is_active',
         'is_available',
         'is_featured',
@@ -41,6 +42,7 @@ class Product extends Model
         'price' => 'decimal:2',
         'compare_at_price' => 'decimal:2',
         'stock' => 'integer',
+        'has_variants' => 'boolean',
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'is_featured' => 'boolean',
@@ -70,6 +72,11 @@ class Product extends Model
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)->orderByDesc('is_primary')->orderBy('position');
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('position')->orderBy('id');
     }
 
     public function orderItems(): HasMany

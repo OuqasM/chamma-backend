@@ -63,6 +63,7 @@ class OrderResource extends JsonResource
                 'name' => $item->product_name,
                 'slug' => $item->product_slug,
                 'sku' => $item->product_sku,
+                'variant' => $item->variant,
                 'image' => $item->product_image
                     ? Storage::disk(config('chamma.disk'))->url($item->product_image)
                     : null,

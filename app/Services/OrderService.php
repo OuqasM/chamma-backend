@@ -103,6 +103,7 @@ class OrderService
                     'product_name' => $this->nameIn($product, $locale),
                     'product_slug' => $product->slug($locale),
                     'product_sku' => $product->sku,
+                    'variant' => isset($line['variant']) && trim((string) $line['variant']) !== '' ? trim((string) $line['variant']) : null,
                     'product_image' => $product->primaryImage()?->path,
                     'locale' => $locale,
                     'unit_price' => $unitPrice,

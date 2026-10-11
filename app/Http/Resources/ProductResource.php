@@ -47,6 +47,12 @@ class ProductResource extends JsonResource
             'stock' => $this->stock,
             'in_stock' => $this->in_stock,
             'is_low_stock' => $this->is_low_stock,
+            'has_variants' => (bool) $this->has_variants,
+            'variants' => $this->whenLoaded('variants', fn () => $this->variants->map(fn ($v) => [
+                'id' => $v->id,
+                'name' => $v->name,
+                'position' => (int) $v->position,
+            ])->values()),
 
             'rating' => (float) $this->rating,
             'rating_count' => (int) $this->rating_count,

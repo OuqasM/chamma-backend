@@ -32,7 +32,7 @@ class ProductController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Product::query()
-            ->with(['translations', 'images', 'brand', 'categories'])
+            ->with(['translations', 'images', 'brand', 'categories', 'variants'])
             ->orderByDesc('updated_at');
 
         if ($search = trim((string) $request->query('search'))) {
@@ -58,7 +58,7 @@ class ProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
-        $product->load(['translations', 'images', 'brand', 'categories']);
+        $product->load(['translations', 'images', 'brand', 'categories', 'variants']);
 
         return response()->json(['product' => new AdminProductResource($product)]);
     }
@@ -71,6 +71,7 @@ class ProductController extends Controller
             $this->syncTranslations($product, $request);
             $this->syncImages($product, $request, isNew: true);
             $this->syncCategories($product, $request);
+            $this->syncVariants($product, $request);
 
             return $product;
         });
@@ -80,7 +81,7 @@ class ProductController extends Controller
         $product->refresh();
 
         return response()->json([
-            'product' => new AdminProductResource($product->load(['translations', 'images', 'brand', 'categories'])),
+            'product' => new AdminProductResource($product->load(['translations', 'images', 'brand', 'categories', 'variants'])),
         ], 201);
     }
 
@@ -96,12 +97,13 @@ class ProductController extends Controller
             $this->syncTranslations($product, $request);
             $this->syncImages($product, $request);
             $this->syncCategories($product, $request);
+            $this->syncVariants($product, $request);
         });
 
         $this->announceRestock($product, $wasAvailable);
 
         return response()->json([
-            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
         ]);
     }
 
@@ -118,7 +120,7 @@ class ProductController extends Controller
         $model = Product::withTrashed()->findOrFail($product);
         $model->restore();
 
-        return response()->json(['product' => new AdminProductResource($model->load(['translations', 'images', 'brand', 'categories']))]);
+        return response()->json(['product' => new AdminProductResource($model->load(['translations', 'images', 'brand', 'categories', 'variants']))]);
     }
 
     public function toggle(Product $product): JsonResponse
@@ -126,7 +128,7 @@ class ProductController extends Controller
         $product->update(['is_active' => ! $product->is_active]);
 
         return response()->json([
-            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
         ]);
     }
 
@@ -143,7 +145,7 @@ class ProductController extends Controller
         $this->announceRestock($product, $wasAvailable);
 
         return response()->json([
-            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories'])),
+            'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
         ]);
     }
 
@@ -203,8 +205,8 @@ class ProductController extends Controller
     {
         $data = $request->safe()->only([
             'brand_id', 'sku', 'slug', 'price', 'cost_price',
-            'compare_at_price', 'stock', 'size', 'gender', 'is_active',
-            'is_available', 'is_featured',
+            'compare_at_price', 'stock', 'size', 'gender', 'has_variants',
+            'is_active', 'is_available', 'is_featured',
         ]);
 
         $productId = $request->route('product')?->id;
@@ -219,7 +221,7 @@ class ProductController extends Controller
             }
         }
 
-        foreach (['is_active', 'is_available', 'is_featured'] as $flag) {
+        foreach (['has_variants', 'is_active', 'is_available', 'is_featured'] as $flag) {
             // Coerce submitted checkboxes, but let the column default apply when
             // the admin says nothing, so a new product is not silently hidden.
             if ($request->exists($flag) && $request->input($flag) !== null) {
@@ -410,6 +412,28 @@ class ProductController extends Controller
                 'alt' => $product->name(),
                 'is_primary' => $index === 0 && ! $product->images()->exists(),
                 'position' => $index,
+            ]);
+        }
+    }
+
+    private function syncVariants(Product $product, ProductRequest $request): void
+    {
+        $variants = $request->input('variants', []);
+        if (! is_array($variants)) {
+            $variants = [];
+        }
+
+        $product->variants()->delete();
+
+        $position = 0;
+        foreach ($variants as $variant) {
+            $name = trim((string) ($variant['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $product->variants()->create([
+                'name' => $name,
+                'position' => $position++,
             ]);
         }
     }

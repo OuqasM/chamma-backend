@@ -27,6 +27,12 @@ class AdminProductResource extends JsonResource
             'stock' => (int) $this->stock,
             'size' => $this->size,
             'gender' => $this->gender,
+            'has_variants' => (bool) $this->has_variants,
+            'variants' => $this->whenLoaded('variants', fn () => $this->variants->map(fn ($v) => [
+                'id' => $v->id,
+                'name' => $v->name,
+                'position' => (int) $v->position,
+            ])->values()),
             'is_active' => (bool) $this->is_active,
             'is_available' => (bool) $this->is_available,
             'is_featured' => (bool) $this->is_featured,

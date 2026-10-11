@@ -42,6 +42,7 @@ class ProductController extends Controller
                 'images',
                 'brand.translations',
                 'categories.translations',
+                'variants',
             ])
             ->firstOrFail();
 
