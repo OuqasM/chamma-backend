@@ -18,7 +18,6 @@ class Order extends Model
         'last_name',
         'customer_name',
         'phone',
-        'email',
         'city',
         'address',
         'notes',

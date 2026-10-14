@@ -143,38 +143,6 @@ class OrderNotificationTest extends TestCase
         Mail::assertSent(NewOrderNotification::class, fn ($mail) => $mail->hasTo('one@chama.ma') && $mail->hasTo('two@chama.ma'));
     }
 
-    /**
-     * The shopper's address is a reply-to, not a recipient: an owner replying to
-     * an alert should reach the shopper, not the store's own inbox.
-     */
-    public function test_the_customers_email_becomes_reply_to(): void
-    {
-        Mail::fake();
-
-        $this->enableAlerts('owner@chama.ma');
-
-        $this->checkout(['email' => 'ahmed@example.com'])->assertCreated();
-
-        Mail::assertSent(NewOrderNotification::class, function ($mail) {
-            $replyTo = $mail->envelope()->replyTo;
-
-            return array_column($replyTo, 'address') === ['ahmed@example.com'];
-        });
-    }
-
-    public function test_an_order_without_a_customer_email_still_notifies_the_owner(): void
-    {
-        Mail::fake();
-
-        $this->enableAlerts('owner@chama.ma');
-
-        $this->checkout()->assertCreated();
-
-        Mail::assertSent(NewOrderNotification::class, function ($mail) {
-            return $mail->envelope()->replyTo === [];
-        });
-    }
-
     // ---------------------------------------------------------------
     // A mail failure must not cost the shopper their order
     // ---------------------------------------------------------------
@@ -384,39 +352,6 @@ class OrderNotificationTest extends TestCase
     }
 
     // ---------------------------------------------------------------
-    // Customer email at checkout
-    // ---------------------------------------------------------------
-
-    public function test_a_customer_email_is_stored_when_given(): void
-    {
-        $this->enableAlerts('owner@chama.ma');
-        Mail::fake();
-
-        $this->checkout(['email' => 'ahmed@example.com'])->assertCreated();
-
-        $this->assertSame('ahmed@example.com', Order::query()->firstOrFail()->email);
-    }
-
-    public function test_an_omitted_customer_email_stores_null(): void
-    {
-        $this->checkout()->assertCreated();
-
-        $this->assertNull(Order::query()->firstOrFail()->email);
-    }
-
-    /**
-     * An empty string and an absent field must land in the same place. They are
-     * the same shopper behaviour, and an order email of "" is a stored value
-     * that anything comparing emptiness loosely will misread.
-     */
-    public function test_an_empty_customer_email_stores_null(): void
-    {
-        $this->checkout(['email' => '   '])->assertCreated();
-
-        $this->assertNull(Order::query()->firstOrFail()->email);
-    }
-
-    // ---------------------------------------------------------------
     // The message itself
     // ---------------------------------------------------------------
 
@@ -428,7 +363,6 @@ class OrderNotificationTest extends TestCase
     public function test_the_message_carries_the_order_details(): void
     {
         $order = $this->placeOrder([
-            'email' => 'ahmed@example.com',
             'notes' => 'Appeler apres 18h',
         ]);
 
@@ -439,7 +373,6 @@ class OrderNotificationTest extends TestCase
             $order->reference,
             $order->customer_name,
             $order->phone,
-            'ahmed@example.com',
             'CASABLANCA',
             'Appeler apres 18h',
             'Oud Royale',
@@ -468,17 +401,5 @@ class OrderNotificationTest extends TestCase
         $html = (new NewOrderNotification($order))->render();
 
         $this->assertStringContainsString('https://chammastore.test/fr/admin/orders', $html);
-    }
-
-    /**
-     * A malformed address is a typo, not a reason to lose the order — but it
-     * must not be stored either.
-     */
-    public function test_a_malformed_customer_email_is_rejected(): void
-    {
-        $this->checkout(['email' => 'not-an-email'])->assertStatus(422)
-            ->assertJsonValidationErrors('email');
-
-        $this->assertSame(0, Order::query()->count());
     }
 }

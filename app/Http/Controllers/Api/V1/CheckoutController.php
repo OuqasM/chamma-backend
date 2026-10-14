@@ -33,7 +33,7 @@ class CheckoutController extends Controller
     {
         $locale = $request->input('locale') ?: App::getLocale();
 
-        $customer = $request->safe()->only(['name', 'phone', 'email', 'city', 'address', 'notes']);
+        $customer = $request->safe()->only(['name', 'phone', 'city', 'address', 'notes']);
         $customer['payment_method'] = $request->input('payment_method') ?: $this->payments->default();
 
         try {

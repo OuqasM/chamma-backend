@@ -128,7 +128,6 @@ class OrderService
                 'last_name' => $lastName,
                 'customer_name' => trim($customer['name']),
                 'phone' => $customer['phone'],
-                'email' => $customer['email'] ?? null,
                 'city' => $customer['city'],
                 'address' => $customer['address'],
                 'notes' => $customer['notes'] ?? null,

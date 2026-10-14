@@ -37,10 +37,6 @@ class NewOrderNotification extends Mailable
             subject: __('mail.order.subject', [
                 'reference' => $this->order->reference,
             ]),
-            // Reply-to, not a recipient. When the shopper gave an address,
-            // replying to the alert should open a mail to them rather than back
-            // to the store's own inbox asking who wrote.
-            replyTo: $this->order->email ? [$this->order->email] : [],
         );
     }
 
@@ -50,7 +46,6 @@ class NewOrderNotification extends Mailable
             view: 'mail.order',
             with: [
                 'order' => $this->order,
-                'customerEmail' => $this->order->email,
                 'items' => $this->order->items,
                 'adminUrl' => $this->adminUrl(),
             ],
@@ -64,11 +59,6 @@ class NewOrderNotification extends Mailable
 
     /**
      * Lets the owner jump straight to the order from the alert.
-     *
-     * The customer's own address, when they gave one, is set as reply-to rather
-     * than as a recipient: replying to an alert should open a mail to the
-     * shopper. Without it, Reply lands on the store's own inbox asking who
-     * wrote to them.
      */
     private function adminUrl(): string
     {

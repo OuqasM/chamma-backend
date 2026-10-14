@@ -47,7 +47,6 @@ class StoreOrderRequest extends FormRequest
             // guessing it would fail an order that is genuinely deliverable.
             'phone' => ['required', 'string', 'max:30'],
 
-            'email' => ['nullable', 'email', 'max:120'],
             'city' => ['required', 'string', Rule::in(app(ShippingZoneService::class)->names())],
             'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],

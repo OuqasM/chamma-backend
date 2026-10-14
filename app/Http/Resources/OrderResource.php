@@ -29,7 +29,6 @@ class OrderResource extends JsonResource
                 'last_name' => $this->last_name,
                 'name' => $this->customer_name,
                 'phone' => $this->phone,
-                'email' => $this->email,
             ],
 
             'shipping' => [

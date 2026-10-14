@@ -10,8 +10,6 @@ return [
         'received' => 'Reçue le',
         'customer' => 'Client',
         'phone' => 'Téléphone',
-        'email' => 'Email',
-        'email_missing' => 'non renseigné',
         'city' => 'Ville de livraison',
         'address' => 'Adresse de livraison',
         'notes' => 'Remarques du client',

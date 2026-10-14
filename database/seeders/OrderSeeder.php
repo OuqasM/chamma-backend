@@ -34,12 +34,12 @@ class OrderSeeder extends Seeder
         }
 
         $customers = [
-            ['locale' => 'fr', 'first' => 'Salma', 'last' => 'Benhaddou', 'phone' => '0612345678', 'city' => 'Casablanca', 'address' => '45, rue Ibn Batouta, Appt 8', 'email' => 'salma.benhaddou@example.ma', 'status' => OrderStatus::Delivered, 'age' => 21],
-            ['locale' => 'ar', 'first' => 'يوسف', 'last' => 'العلوي', 'phone' => '0661876543', 'city' => 'Marrakech', 'address' => 'شارع محمد الخامس، رقم 12، الطابق 3', 'email' => null, 'status' => OrderStatus::Confirmed, 'age' => 6],
-            ['locale' => 'fr', 'first' => 'Mehdi', 'last' => 'Tazi', 'phone' => '0675123498', 'city' => 'Rabat', 'address' => '7, avenue Ibn Sina, Appt 4', 'email' => 'mehdi.tazi@example.ma', 'status' => OrderStatus::Confirmed, 'age' => 3],
-            ['locale' => 'fr', 'first' => 'Nadia', 'last' => 'Cherkaoui', 'phone' => '0620987654', 'city' => 'Fès', 'address' => '33, rue de la Fontaine, Quartier Batha', 'email' => 'nadia.cherkaoui@example.ma', 'status' => OrderStatus::Confirmed, 'age' => 1],
-            ['locale' => 'ar', 'first' => 'خديجة', 'last' => 'بلقاسم', 'phone' => '0655443322', 'city' => 'Agadir', 'address' => 'شارع الحسن الثاني، إقامة النخيل، رقم 5', 'email' => null, 'status' => OrderStatus::New, 'age' => 0],
-            ['locale' => 'fr', 'first' => 'Anas', 'last' => 'El Fassi', 'phone' => '0644556677', 'city' => 'Oujda', 'address' => '15, avenue Hassan II', 'email' => 'anas.elfassi@example.ma', 'status' => OrderStatus::Cancelled, 'age' => 34],
+            ['locale' => 'fr', 'first' => 'Salma', 'last' => 'Benhaddou', 'phone' => '0612345678', 'city' => 'Casablanca', 'address' => '45, rue Ibn Batouta, Appt 8', 'status' => OrderStatus::Delivered, 'age' => 21],
+            ['locale' => 'ar', 'first' => 'يوسف', 'last' => 'العلوي', 'phone' => '0661876543', 'city' => 'Marrakech', 'address' => 'شارع محمد الخامس، رقم 12، الطابق 3', 'status' => OrderStatus::Confirmed, 'age' => 6],
+            ['locale' => 'fr', 'first' => 'Mehdi', 'last' => 'Tazi', 'phone' => '0675123498', 'city' => 'Rabat', 'address' => '7, avenue Ibn Sina, Appt 4', 'status' => OrderStatus::Confirmed, 'age' => 3],
+            ['locale' => 'fr', 'first' => 'Nadia', 'last' => 'Cherkaoui', 'phone' => '0620987654', 'city' => 'Fès', 'address' => '33, rue de la Fontaine, Quartier Batha', 'status' => OrderStatus::Confirmed, 'age' => 1],
+            ['locale' => 'ar', 'first' => 'خديجة', 'last' => 'بلقاسم', 'phone' => '0655443322', 'city' => 'Agadir', 'address' => 'شارع الحسن الثاني، إقامة النخيل، رقم 5', 'status' => OrderStatus::New, 'age' => 0],
+            ['locale' => 'fr', 'first' => 'Anas', 'last' => 'El Fassi', 'phone' => '0644556677', 'city' => 'Oujda', 'address' => '15, avenue Hassan II', 'status' => OrderStatus::Cancelled, 'age' => 34],
         ];
 
         $sequence = 1042;
@@ -83,7 +83,6 @@ class OrderSeeder extends Seeder
                 'last_name' => $customer['last'],
                 'customer_name' => $customer['first'].' '.$customer['last'],
                 'phone' => $customer['phone'],
-                'email' => $customer['email'],
                 'city' => $customer['city'],
                 'address' => $customer['address'],
                 'notes' => null,

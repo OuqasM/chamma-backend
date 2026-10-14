@@ -78,16 +78,6 @@
                                 <td style="padding:6px 0;font-weight:600;">{{ $order->customer_name }}</td>
                             </tr>
                             <tr>
-                                <td style="padding:6px 0;color:#8a8378;vertical-align:top;">{{ __('mail.order.email') }}</td>
-                                <td style="padding:6px 0;">
-                                    @if ($customerEmail)
-                                        <a href="mailto:{{ $customerEmail }}" style="color:#1f1b18;">{{ $customerEmail }}</a>
-                                    @else
-                                        <span style="color:#a9a29a;">{{ __('mail.order.email_missing') }}</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            <tr>
                                 <td style="padding:6px 0;color:#8a8378;vertical-align:top;">{{ __('mail.order.city') }}</td>
                                 <td style="padding:6px 0;">{{ $order->city }}</td>
                             </tr>

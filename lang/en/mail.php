@@ -10,8 +10,6 @@ return [
         'received' => 'Received',
         'customer' => 'Customer',
         'phone' => 'Phone',
-        'email' => 'Email',
-        'email_missing' => 'not given',
         'city' => 'Delivery city',
         'address' => 'Delivery address',
         'notes' => 'Customer notes',
