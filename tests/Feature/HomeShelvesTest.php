@@ -238,6 +238,27 @@ class HomeShelvesTest extends TestCase
         $this->assertCount(4, $ids, 'the shelf refills past the hidden product');
     }
 
+    public function test_a_shelf_skips_products_that_are_unavailable(): void
+    {
+        // The newest product overall is out of stock, so it must not take a
+        // slot that a shopper can never fill — same rule as hidden products.
+        $unavailable = $this->create('Sold Out', ['is_available' => false]);
+        $this->stamp($unavailable, ['created_at' => now()]);
+
+        foreach (range(1, 5) as $i) {
+            $this->stamp($this->create("Parfum {$i}"), ['created_at' => now()->subDays($i)]);
+        }
+
+        $home = $this->getJson('/api/fr/home')->assertOk();
+
+        foreach (['best_sellers', 'new_arrivals'] as $shelf) {
+            $ids = array_column($home->json($shelf), 'id');
+
+            $this->assertNotContains($unavailable->id, $ids);
+            $this->assertCount(4, $ids, "{$shelf} refills past the unavailable product");
+        }
+    }
+
     public function test_the_product_payload_no_longer_advertises_an_is_new_flag(): void
     {
         $this->create('Oud Royale');

@@ -194,7 +194,7 @@ class CatalogService
                 // Asked once per request. `sales_count` is unindexed, so this is
                 // a scan of the products table — fine at catalogue scale, and
                 // still cheaper than the conditional SQL that would avoid it.
-                $maxSales = (int) Product::query()->active()->max('sales_count');
+                $maxSales = (int) Product::query()->active()->inStock()->max('sales_count');
 
                 if ($maxSales <= 0) {
                     return $q->orderBy('products.created_at')->orderBy('products.id');
@@ -228,7 +228,7 @@ class CatalogService
     private function shelf(?string $locale, callable $constrain, int $limit): Collection
     {
         return $constrain(
-            Product::query()->active()->with([
+            Product::query()->active()->inStock()->with([
                 'translations', 'images', 'brand.translations', 'categories.translations',
             ])
         )->take($limit)->get();
