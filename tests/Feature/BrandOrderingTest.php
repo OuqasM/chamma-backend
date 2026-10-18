@@ -22,9 +22,9 @@ use Tests\TestCase;
  *
  * Two traps make this worth writing down rather than trusting:
  *
- *  - `position` defaults to 0, so a shop that has never touched the field has
- *    every brand tied on 0 and the visible order is entirely the tiebreaker's
- *    doing. That is the state most shops are actually in.
+ *  - `position` defaults to 0, so a brand the owner never numbered would sort
+ *    to the very front of every list by position alone. Numbered brands lead
+ *    (ties broken by name); never-numbered ones append in creation order.
  *  - The assertions are on `slug`, not `name`. `name` is served out of
  *    `brand_translations`, so a brand created without a translation row answers
  *    with an empty string and an ordering test written against it passes or fails
@@ -130,15 +130,54 @@ class BrandOrderingTest extends TestCase
 
     public function test_brands_sharing_a_position_fall_back_to_the_name(): void
     {
-        // Every brand on the column default, which is what an untouched shop
-        // looks like: the name alone decides the order.
+        // Two explicitly numbered brands tie on position 3, and the name has to
+        // settle it — the owner should not see a coin flip between the two.
+        $this->seedBrandWithoutProducts('Zeppelin', 3);
+        $this->seedBrandWithoutProducts('Aesop', 3);
+        $this->seedBrandWithoutProducts('Mancora', 5);
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $slugs = $this->slugsFrom($this->getJson('/api/admin/brands')->assertOk()->json('data'));
+
+        $this->assertSame(['aesop', 'zeppelin', 'mancora'], $slugs);
+    }
+
+    public function test_a_brand_the_owner_never_numbered_sorts_last_in_creation_order(): void
+    {
+        // A brand created after the shelf was numbered carries the column
+        // default (0), and 0 sorted by position alone would put the newest
+        // addition in slot one — the exact bug "The Ordinary" showed on the live
+        // homepage. Unnumbered means "append".
+        $this->seedBrands();
+        $newest = Brand::create([
+            'name' => 'The Ordinary',
+            'slug' => 'the-ordinary',
+            'logo' => 'brands/the-ordinary.svg',
+        ]);
+        Product::create([
+            'brand_id' => $newest->id,
+            'slug' => 'the-ordinary-eau-de-parfum',
+            'sku' => 'THEORDINARY-100',
+            'price' => 890,
+        ]);
+
+        $slugs = $this->slugsFrom($this->getJson('/api/fr/brands')->assertOk()->json('data'));
+
+        $this->assertSame(['zeppelin', 'mancora', 'aesop', 'the-ordinary'], $slugs);
+    }
+
+    public function test_brands_never_numbered_follow_their_creation_order(): void
+    {
+        // A shop that has never touched the field has every brand tied on the
+        // default 0; the order a visitor sees is the order the brands were
+        // added, not an alphabetical reshuffle.
         $this->seedBrandWithoutProducts('Zeppelin', 0);
         $this->seedBrandWithoutProducts('Aesop', 0);
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
 
         $slugs = $this->slugsFrom($this->getJson('/api/admin/brands')->assertOk()->json('data'));
 
-        $this->assertSame(['aesop', 'zeppelin'], $slugs);
+        $this->assertSame(['zeppelin', 'aesop'], $slugs);
     }
 
     public function test_a_brand_with_nothing_to_sell_is_left_out_without_disturbing_the_rest(): void

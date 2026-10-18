@@ -331,8 +331,11 @@ class CatalogService
                 ->whereNotNull('brands.logo')
                 ->where('brands.logo', '<>', '')
             )
+            ->orderByRaw('brands.position = 0')
             ->orderBy('brands.position')
+            ->orderByRaw('case when brands.position = 0 then brands.id else 0 end')
             ->orderBy('brands.name')
+            ->orderBy('brands.id')
             ->get([
                 'brands.id',
                 'brands.slug',
