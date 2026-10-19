@@ -81,9 +81,14 @@ class NavigationService
 
         $query = $this->joinTranslationChain(DB::table('brands'), 'brands', 'brand_translations', 'brand_id', $chain, $aliases)
             ->where('brands.is_active', true)
-            // `Brand::scopeOrdered()`: position first, then the canonical name.
+            // `Brand::scopeOrdered()`: the owner's order (position, then name for
+            // ties), with never-numbered brands — the column default, 0 — last
+            // in creation order rather than jumping to the front.
+            ->orderByRaw('brands.position = 0')
             ->orderBy('brands.position')
-            ->orderBy('brands.name');
+            ->orderByRaw('case when brands.position = 0 then brands.id else 0 end')
+            ->orderBy('brands.name')
+            ->orderBy('brands.id');
 
         $columns = ['brands.id', 'brands.slug', 'brands.logo', 'brands.name as canonical_name'];
 

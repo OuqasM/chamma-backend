@@ -135,6 +135,21 @@ class NavigationPayloadTest extends TestCase
         $this->assertSame(['zeppelin', 'mancora', 'aesop'], $slugs);
     }
 
+    public function test_a_brand_the_owner_never_numbered_sorts_last_in_creation_order(): void
+    {
+        // The same contract as /brands and the home carousel: a brand created
+        // after the shelf was numbered carries the default 0, and sorting 0 by
+        // position alone would put the newest addition first in the menu.
+        foreach ([['Zeppelin', 1], ['Mancora', 2]] as [$name, $position]) {
+            Brand::create(['name' => $name, 'slug' => strtolower($name), 'position' => $position]);
+        }
+        Brand::create(['name' => 'The Ordinary', 'slug' => 'the-ordinary']);
+
+        $slugs = array_column($this->getJson('/api/fr/navigation')->json('brands'), 'slug');
+
+        $this->assertSame(['zeppelin', 'mancora', 'the-ordinary'], $slugs);
+    }
+
     public function test_an_inactive_brand_is_left_out(): void
     {
         Brand::create(['name' => 'Rituals', 'slug' => 'rituals']);
