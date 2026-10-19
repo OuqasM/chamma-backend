@@ -26,6 +26,7 @@ class Product extends Model
         'brand_id',
         'slug',
         'sku',
+        'gtin',
         'price',
         'cost_price',
         'compare_at_price',

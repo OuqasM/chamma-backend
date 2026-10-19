@@ -36,6 +36,9 @@ class ProductResource extends JsonResource
             'description' => $description,
             'description_html' => Markdown::toHtml($description),
             'sku' => $this->sku,
+            // And the barcode, so the product page's JSON-LD can name it the
+            // way Merchant Center does.
+            'gtin' => $this->gtin,
             'size' => $this->size,
             'gender' => $this->gender,
 

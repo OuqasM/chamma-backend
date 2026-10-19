@@ -205,7 +205,7 @@ class ProductController extends Controller
     {
         $data = $request->safe()->only([
             'brand_id', 'sku', 'slug', 'price', 'cost_price',
-            'compare_at_price', 'stock', 'size', 'gender', 'has_variants',
+            'compare_at_price', 'stock', 'size', 'gender', 'gtin', 'has_variants',
             'is_active', 'is_available', 'is_featured',
         ]);
 
@@ -219,6 +219,12 @@ class ProductController extends Controller
             if ($productId === null) {
                 $data['sku'] = $this->uniqueSku($request->validated()['name']);
             }
+        }
+
+        // A barcode the admin cleared: on create nothing to store, on update the
+        // stored one is kept — the same "blank means unchanged" rule as the sku.
+        if (blank($data['gtin'] ?? null)) {
+            unset($data['gtin']);
         }
 
         foreach (['has_variants', 'is_active', 'is_available', 'is_featured'] as $flag) {

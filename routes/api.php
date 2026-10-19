@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\NavigationController;
 use App\Http\Controllers\Api\V1\OfferController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ProductFeedController;
 use App\Http\Controllers\Api\V1\SitemapController;
 use App\Http\Controllers\Api\V1\StoreController;
 use App\Http\Controllers\Api\V1\WaitlistController;
@@ -69,6 +70,13 @@ foreach (array_keys(config('chamma.locales')) as $locale) {
 
             Route::get('/categories', [CategoryController::class, 'index'])->middleware('track')->name('categories.index');
             Route::get('/categories/{slug}', [CategoryController::class, 'show'])->middleware('track')->name('categories.show');
+
+            // Google Merchant Center product feed, one XML per language. Grounded
+            // before the product pages on purpose: registered after them,
+            // "/products.xml" would be matched by the catalogue's `{slug}`
+            // segment and taken as the slug of a perfume. Not tracked: it is
+            // Google's robot reading the shelf, not a shopper landing on it.
+            Route::get('/products.xml', ProductFeedController::class)->name('products.feed');
 
             Route::get('/products', [ProductController::class, 'index'])->middleware('track')->name('products.index');
             Route::get('/products/{slug}', [ProductController::class, 'show'])->middleware('track')->name('products.show');

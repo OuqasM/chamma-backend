@@ -26,6 +26,11 @@ class ProductRequest extends FormRequest
             // No longer admin-typed: the controller derives a unique one from the
             // name so the merchant never has to invent a reference.
             'sku' => ['nullable', 'string', 'max:60', Rule::unique('products', 'sku')->ignore($productId)],
+            // Barcode as printed on the packaging: GTIN-8, UPC-12, EAN-13 or
+            // GTIN-14. `digits_between` counts characters on a numeric string,
+            // so a UPC-12's leading zero is kept — and a 15-digit paste is not
+            // silently accepted on the strength of being a number.
+            'gtin' => ['nullable', 'string', 'digits_between:8,14'],
             // Typed once, in English: see App\Concerns\HasSingleName.
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['nullable', 'string', 'max:180', 'alpha_dash', Rule::unique('products', 'slug')->ignore($productId)],

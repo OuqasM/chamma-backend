@@ -17,6 +17,9 @@ class AdminProductResource extends JsonResource
         return [
             'id' => $this->id,
             'sku' => $this->sku,
+            // The barcode the feed and the structured data read. Admin-only
+            // concern of the same kind as the sku.
+            'gtin' => $this->gtin,
             'slug' => $this->slug,
             'price' => (float) $this->price,
             // Admin-only: what the shop pays. Deliberately absent from the
