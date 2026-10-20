@@ -116,6 +116,43 @@ class AdminOrderCreationTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    /**
+     * The list carries a ready wa.me link per row, so contacting a customer is
+     * one click instead of re-typing their number with the separators removed.
+     * A mobile number typed any of the shapes checkout accepts still must end
+     * up as the same international digits wa.me expects.
+     */
+    public function test_the_orders_list_carries_a_whatsapp_link_for_the_customer(): void
+    {
+        $product = $this->product();
+
+        $this->postJson('/api/admin/orders', $this->payload($product, ['phone' => '06 12 34 56 78']))
+            ->assertCreated();
+
+        $this->getJson('/api/admin/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.customer.whatsapp_url', 'https://wa.me/212612345678');
+    }
+
+    /**
+     * Numbers on the 05 range keep their link as well: `PhoneNumber` is the one
+     * decision about which shapes are dialable, and the panel does not re-ask.
+     * A number nobody has registered on WhatsApp simply says so when opened,
+     * which costs less than hiding the contact button for a range checkout
+     * itself accepts.
+     */
+    public function test_an_05_number_still_gets_a_link(): void
+    {
+        $product = $this->product();
+
+        $this->postJson('/api/admin/orders', $this->payload($product, ['phone' => '0512345678']))
+            ->assertCreated();
+
+        $this->getJson('/api/admin/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.customer.whatsapp_url', 'https://wa.me/212512345678');
+    }
+
     // ---------------------------------------------------------------
     // The panel does not get to set the numbers
     // ---------------------------------------------------------------

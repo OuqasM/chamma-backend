@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\PaymentService;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +19,15 @@ class OrderResource extends JsonResource
         $labelLocale = app()->getLocale();
         $orderLocale = $this->locale;
 
+        // The address for the panel's contact button. wa.me wants bare
+        // international digits, while the order stores the phone exactly as it
+        // was typed ("06 12 34 56 78", "+2126…", "00212…"), so it goes through
+        // the shared normaliser — the same link the Waitlist emails carry, and
+        // the one place that decides which Moroccan numbers are dialable. The
+        // guard is for rows whose phone does not match that shape at all: their
+        // link is left out rather than pointing at a wrong number.
+        $digits = PhoneNumber::whatsappDigits((string) $this->phone);
+
         return [
             'id' => $this->id,
             'reference' => $this->reference,
@@ -29,6 +38,7 @@ class OrderResource extends JsonResource
                 'last_name' => $this->last_name,
                 'name' => $this->customer_name,
                 'phone' => $this->phone,
+                'whatsapp_url' => $digits !== '' ? 'https://wa.me/'.$digits : null,
             ],
 
             'shipping' => [
