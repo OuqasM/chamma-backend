@@ -230,6 +230,6 @@ class GoogleFeedTest extends TestCase
             ->get('/api/fr/products.xml')
             ->assertOk();
 
-        $this->assertDatabaseCount('visits', 0);
+        $this->assertDatabaseCount('page_views', 0);
     }
 }

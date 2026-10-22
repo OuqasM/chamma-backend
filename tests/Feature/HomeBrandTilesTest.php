@@ -204,6 +204,6 @@ class HomeBrandTilesTest extends TestCase
         // refetches on every page and which must stay out of the visit counts.
         // The recorded path is `home`, not `/fr/home`: the tracker maps an API
         // request back onto the storefront path behind it.
-        $this->assertDatabaseHas('visits', ['path' => 'home', 'locale' => 'fr']);
+        $this->assertDatabaseHas('page_views', ['path' => 'home', 'locale' => 'fr']);
     }
 }

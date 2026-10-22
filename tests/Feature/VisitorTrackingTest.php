@@ -2,20 +2,22 @@
 
 namespace Tests\Feature;
 
-use App\Models\Visit;
+use App\Models\PageView;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
 use Tests\TestCase;
 
 /**
- * The visitor table.
+ * The page view log.
  *
- * The behaviour that matters is the one that is easy to get wrong: a second
- * visit must update the existing row rather than adding another, and it must
- * not move `first_seen` or reset the counter. Most of these tests assert that
- * explicitly, because a duplicate row would quietly inflate every count the
- * panel shows.
+ * A visit used to be a row that was found, updated and counted; now it is an
+ * event that is appended and never revised. The behaviour that matters is
+ * the one that is easy to get wrong either way: every counted request
+ * becomes exactly one row of its own, and rows are attributed to the token
+ * the server issued — not to the IP — so two browsers behind one address
+ * stay two visitors, and every page keeps the state it was actually served
+ * with.
  */
 class VisitorTrackingTest extends TestCase
 {
@@ -29,14 +31,14 @@ class VisitorTrackingTest extends TestCase
 
     private const CHROME_ANDROID = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 
-    public function test_a_storefront_page_view_creates_one_visit(): void
+    public function test_a_storefront_page_view_creates_one_row(): void
     {
         $this->getJson('/api/fr/home')->assertOk();
 
-        $this->assertSame(1, Visit::query()->count());
+        $this->assertSame(1, PageView::query()->count());
     }
 
-    public function test_a_repeat_visit_updates_the_same_row_instead_of_adding_one(): void
+    public function test_a_repeat_visit_appends_a_new_row_for_the_same_visitor(): void
     {
         $first = $this->getJson('/api/fr/home')->assertOk();
 
@@ -47,19 +49,26 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/products')
             ->assertOk();
 
-        $this->assertSame(1, Visit::query()->count(), 'a returning visitor created a second row');
+        $rows = PageView::query()->orderBy('id')->get();
+
+        // Two page views are two rows — the log gains the repeated visit
+        // rather than overwriting the first one — but both belong to the
+        // token the server issued, not to the request's IP.
+        $this->assertSame(2, $rows->count());
+        $this->assertSame($visitorId, $rows[0]->visitor_id);
+        $this->assertSame($visitorId, $rows[1]->visitor_id);
     }
 
     /**
-     * The whole point of "keep the last visit": the row carries the newest
-     * state, while the counter and the original arrival are preserved.
+     * Nothing is revised in place, so no state is overwritten and no count
+     * needs protecting: each row simply records the request that produced
+     * it, and the sequence reads as the visitor's actual history.
      */
-    public function test_a_repeat_visit_keeps_the_last_state_and_bumps_the_count(): void
+    public function test_each_page_view_carries_its_own_state(): void
     {
         $response = $this->getJson('/api/fr/home')->assertOk();
 
         $visitorId = $this->issuedVisitorId($response);
-        $first = Visit::query()->firstOrFail();
 
         $this->withCredentials()
             ->withUnencryptedCookie('chamma_visitor', $visitorId)
@@ -73,18 +82,15 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/offers')
             ->assertOk();
 
-        $visit = Visit::query()->firstOrFail();
+        $rows = PageView::query()->orderBy('id')->get();
 
-        $this->assertSame(3, $visit->visits_count, 'the running total did not advance');
-        // The most recent path is what the panel shows.
-        $this->assertSame('offers', $visit->path);
+        $this->assertSame(3, $rows->count(), 'a repeat visit lost its own row');
+        $this->assertSame('home', $rows[0]->path);
+        $this->assertSame('categories', $rows[1]->path);
+        $this->assertSame('offers', $rows[2]->path);
         $this->assertTrue(
-            $first->first_seen->equalTo($visit->first_seen),
-            'first_seen moved on a return visit',
-        );
-        $this->assertTrue(
-            $visit->last_seen->greaterThan($first->last_seen),
-            'last_seen did not advance',
+            $rows[2]->created_at->greaterThan($rows[1]->created_at),
+            'the later page view was not stored as later',
         );
     }
 
@@ -103,28 +109,32 @@ class VisitorTrackingTest extends TestCase
             $cookie->getExpiresTime(),
             60,
         );
-        // The token must not be readable by scripts, or an XSS bug would hand a
-        // stable identifier to whoever triggered it.
+        // The token must not be readable by scripts, or an XSS bug would hand
+        // a stable identifier to whoever triggered it.
         $this->assertTrue($cookie->isHttpOnly());
         $this->assertSame('lax', $cookie->getSameSite());
     }
 
     /**
-     * Two different visitors must not be collapsed into one row, which is what
-     * would happen if the identity were the IP alone.
+     * Two different visitors must not be collapsed into one row, which is
+     * what would happen if the log were keyed by IP alone. Appending by
+     * token makes that a near-impossible bug, so this test is cheap
+     * insurance against someone reintroducing it.
      */
     public function test_two_visitors_with_the_same_ip_are_stored_separately(): void
     {
         $this->getJson('/api/fr/home')->assertOk();
-        $this->assertCount(1, Visit::query()->get());
 
-        // A second request carrying no identity cookie is a different browser,
-        // which is how the test client behaves by default: cookies the *server*
-        // set are not fed back into later requests, only ones the test sets
-        // explicitly. Nothing needs clearing here.
+        // A second request carrying no identity cookie is a different
+        // browser, which is how the test client behaves by default: cookies
+        // the *server* set are not fed back into later requests, only ones
+        // the test sets explicitly. Nothing needs clearing here.
         $this->getJson('/api/fr/home')->assertOk();
 
-        $this->assertSame(2, Visit::query()->count(), 'two browsers behind one IP were merged');
+        $rows = PageView::query()->get();
+
+        $this->assertSame(2, $rows->count(), 'two browsers behind one IP were merged');
+        $this->assertNotSame($rows[0]->visitor_id, $rows[1]->visitor_id);
     }
 
     /**
@@ -149,10 +159,10 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/home')
             ->assertOk();
 
-        $visit = Visit::query()->firstOrFail();
+        $row = PageView::query()->firstOrFail();
 
-        $this->assertSame($device, $visit->device);
-        $this->assertSame($browser, $visit->browser);
+        $this->assertSame($device, $row->device);
+        $this->assertSame($browser, $row->browser);
     }
 
     public function test_an_unknown_agent_falls_back_to_other_rather_than_desktop(): void
@@ -161,7 +171,7 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/home')
             ->assertOk();
 
-        $this->assertSame('other', Visit::query()->firstOrFail()->device);
+        $this->assertSame('other', PageView::query()->firstOrFail()->device);
     }
 
     public function test_bots_are_not_recorded(): void
@@ -170,35 +180,37 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/home')
             ->assertOk();
 
-        $this->assertSame(0, Visit::query()->count(), 'a crawler was recorded as a visitor');
+        $this->assertSame(0, PageView::query()->count(), 'a crawler was recorded as a visitor');
     }
 
     /**
-     * A cart submission is not a page view. The quote endpoint accepts an empty
-     * basket — it totals zero rather than rejecting — so the status is not what
-     * is being asserted here; only the absence of a row is.
+     * A cart submission is not a page view. The quote endpoint accepts an
+     * empty basket — it totals zero rather than rejecting — so the status is
+     * not what is being asserted here; only the absence of a row is.
      */
     public function test_write_requests_are_not_counted_as_visits(): void
     {
         $this->postJson('/api/fr/checkout/quote', [])->assertOk();
         $this->postJson('/api/fr/checkout', [])->assertStatus(422);
 
-        $this->assertSame(0, Visit::query()->count(), 'a POST was counted as a page view');
+        $this->assertSame(0, PageView::query()->count(), 'a POST was counted as a page view');
     }
 
     public function test_an_order_lookup_is_not_counted(): void
     {
         $this->getJson('/api/fr/orders/NOPE')->assertStatus(404);
 
-        $this->assertSame(0, Visit::query()->count());
+        $this->assertSame(0, PageView::query()->count());
     }
 
     public function test_the_locale_is_recorded_from_the_route(): void
     {
         $this->getJson('/api/ar/home')->assertOk();
 
-        $this->assertSame('ar', Visit::query()->firstOrFail()->locale);
-        $this->assertSame('home', Visit::query()->firstOrFail()->path);
+        $row = PageView::query()->firstOrFail();
+
+        $this->assertSame('ar', $row->locale);
+        $this->assertSame('home', $row->path);
     }
 
     public function test_a_malformed_cookie_is_replaced_rather_than_rejected(): void
@@ -207,9 +219,10 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/home')
             ->assertOk();
 
-        $visit = Visit::query()->firstOrFail();
-
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $visit->visitor_id);
+        $this->assertMatchesRegularExpression(
+            '/^[a-f0-9]{32}$/',
+            PageView::query()->firstOrFail()->visitor_id,
+        );
     }
 
     public function test_the_referrer_is_recorded(): void
@@ -218,16 +231,16 @@ class VisitorTrackingTest extends TestCase
             ->getJson('/api/fr/home')
             ->assertOk();
 
-        $this->assertSame('https://www.instagram.com/', Visit::query()->firstOrFail()->referrer);
+        $this->assertSame('https://www.instagram.com/', PageView::query()->firstOrFail()->referrer);
     }
 
     /**
      * The identity the server handed to a browser on a given response.
      *
      * Taken from the response rather than the database, because the database
-     * holds the resolved id and reading it back would let a test pass even if
-     * the cookie were never sent — which is exactly the bug this suite was
-     * written to catch.
+     * holds the resolved id and reading it back would let a test pass even
+     * if the cookie were never sent — which is exactly the bug this suite
+     * was written to catch.
      */
     private function issuedVisitorId(TestResponse $response): string
     {

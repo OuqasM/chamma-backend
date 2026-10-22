@@ -171,6 +171,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Page view log
+    |--------------------------------------------------------------------------
+    |
+    | A page view carries the visitor's IP address, so the log is personal
+    | data with a retention window: `model:prune` (scheduled daily in
+    | routes/console.php) deletes rows older than this many days. Set
+    | STORE_VISIT_RETENTION_DAYS to opt for a different window.
+    |
+    */
+
+    'visits' => [
+        'retention_days' => (int) env('STORE_VISIT_RETENTION_DAYS', 365),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Catalogue
     |--------------------------------------------------------------------------
     */

@@ -185,7 +185,7 @@ class NavigationPayloadTest extends TestCase
             ->getJson('/api/fr/navigation')
             ->assertOk();
 
-        $this->assertDatabaseMissing('visits', ['path' => 'navigation']);
+        $this->assertDatabaseMissing('page_views', ['path' => 'navigation']);
     }
 
     public function test_it_is_cached_and_the_cache_is_dropped_when_a_brand_changes(): void

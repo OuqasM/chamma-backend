@@ -2,17 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\PageView;
 use App\Models\User;
-use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * The admin side of visitor tracking.
  *
- * The panel is the only place this data is read, so these tests exist to prove
- * two things: an admin sees it, and nobody else does. The second matters more
- * — a visitor list is personal data, and it sits behind one route group.
+ * The panel is the only place this data is read, so these tests exist to
+ * prove two things: an admin sees it, and nobody else does. The second
+ * matters more — a visitor list is personal data, and it sits behind one
+ * route group.
+ *
+ * The underlying log holds one row per page view; every expectation here is
+ * phrased in events, because that is what the grouping has to add up to.
  */
 class AdminVisitTest extends TestCase
 {
@@ -22,38 +26,30 @@ class AdminVisitTest extends TestCase
     {
         parent::setUp();
 
-        $this->visit = Visit::query()->create([
-            'visitor_id' => str_repeat('a', 32),
-            'ip' => '203.0.113.7',
-            'device' => 'mobile',
-            'browser' => 'Safari',
-            'os' => 'iOS',
-            'path' => 'products',
-            'referrer' => null,
-            'locale' => 'fr',
-            'visits_count' => 4,
-            'first_seen' => now()->subDays(10),
-            'last_seen' => now()->subHours(3),
-        ]);
+        // Visitor A: four page views behind one address, spread over ten
+        // days, always mobile Safari. The repeats exist so the "one visitor,
+        // several views" case has something to count.
+        foreach ([now()->subDays(10), now()->subDays(3), now()->subHours(6), now()->subHours(3)] as $when) {
+            $this->visit = $this->seedView(['created_at' => $when]);
+        }
 
-        $this->other = Visit::query()->create([
+        // Visitor B: one page view, a different person at a different
+        // address, an hour ago.
+        $this->other = $this->seedView([
             'visitor_id' => str_repeat('b', 32),
             'ip' => '203.0.113.8',
             'device' => 'desktop',
             'browser' => 'Chrome',
             'os' => 'macOS',
             'path' => 'offers',
-            'referrer' => null,
             'locale' => 'en',
-            'visits_count' => 1,
-            'first_seen' => now()->subDay(),
-            'last_seen' => now()->subHour(),
+            'created_at' => now()->subHour(),
         ]);
     }
 
-    private Visit $visit;
+    private PageView $visit;
 
-    private Visit $other;
+    private PageView $other;
 
     public function test_the_visitor_list_requires_authentication(): void
     {
@@ -68,9 +64,9 @@ class AdminVisitTest extends TestCase
     }
 
     /**
-     * A group covers several identity cookies, so there is no single token that
-     * would be the truth for the row. Exposing one member's token as if it spoke
-     * for the others would mislead; none is exposed instead.
+     * A group covers several identity cookies, so there is no single token
+     * that would be the truth for the row. Exposing one member's token as if
+     * it spoke for the others would mislead; none is exposed instead.
      */
     public function test_the_grouped_row_does_not_expose_an_identity_token(): void
     {
@@ -80,30 +76,40 @@ class AdminVisitTest extends TestCase
             $this->assertArrayNotHasKey('visitor_id', $group);
         }
 
-        $this->assertNotContains($this->visit->visitor_id, $visits);
-        $this->assertNotContains($this->other->visitor_id, $visits);
+        // The tokens exist on the underlying rows; verifying the exclusion
+        // against them rather than against strings makes this a real check.
+        $this->assertNotContains(
+            $this->visit->visitor_id,
+            collect($visits)->pluck('visitor_id')->all(),
+        );
+        $this->assertNotContains(
+            $this->other->visitor_id,
+            collect($visits)->pluck('visitor_id')->all(),
+        );
     }
 
     /**
-     * The reported problem: two rows with the same IP but different ids. They are
-     * one line now, and `visitors` is what stops the collapse from hiding that
-     * they were two people.
+     * The reported problem: several rows sharing an IP but carrying
+     * different tokens. They are one line now, and `visitors` is what stops
+     * the collapse from hiding that they were two people.
      */
     public function test_two_visitors_behind_one_ip_collapse_into_one_row(): void
     {
-        $newest = Visit::query()->create([
-            'visitor_id' => str_repeat('c', 32),
-            'ip' => '203.0.113.7',
-            'device' => 'desktop',
-            'browser' => 'Chrome',
-            'os' => 'macOS',
-            'path' => 'offers',
-            'referrer' => null,
-            'locale' => 'en',
-            'visits_count' => 3,
-            'first_seen' => now()->subHours(5),
-            'last_seen' => now()->subMinutes(10),
-        ]);
+        // Visitor C shared visitor A's address: three more page views, the
+        // newest a desktop Chrome view ten minutes ago.
+        $newest = null;
+
+        foreach ([now()->subHours(5), now()->subHours(1), now()->subMinutes(10)] as $when) {
+            $newest = $this->seedView([
+                'visitor_id' => str_repeat('c', 32),
+                'device' => 'desktop',
+                'browser' => 'Chrome',
+                'os' => 'macOS',
+                'path' => 'offers',
+                'locale' => 'en',
+                'created_at' => $when,
+            ]);
+        }
 
         $visits = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('visits');
 
@@ -113,18 +119,20 @@ class AdminVisitTest extends TestCase
         $shared = collect($visits)->firstWhere('ip', '203.0.113.7');
 
         $this->assertSame(2, $shared['visitors'], 'both identities behind the address must be counted');
-        $this->assertSame(7, $shared['visits_count'], 'the running counters must be added together');
-        // The most recent visit at the address, not the older one's details.
+        $this->assertSame(7, $shared['visits_count'], 'every page view must be counted, not just rows');
+        // The most recent page view at the address, not an arbitrary row's
+        // details.
         $this->assertSame('Chrome', $shared['browser']);
         $this->assertSame('desktop', $shared['device']);
-        // Compared against the stored value: the column truncates microseconds
-        // that `now()` carries, so a freshly built timestamp would not match.
-        $this->assertSame($newest->refresh()->last_seen->toIso8601String(), $shared['last_seen']);
+        // Compared against the stored value: the column truncates
+        // microseconds that `now()` carries, so a freshly built timestamp
+        // would not match.
+        $this->assertSame($newest->refresh()->created_at->toIso8601String(), $shared['last_seen']);
     }
 
     /**
-     * One visitor is one line, however many times they return: the group must not
-     * inflate `visitors` past one.
+     * One visitor is one identity, however many times they return: the
+     * group must not inflate `visitors` past one.
      */
     public function test_one_visitor_returning_does_not_look_like_several_people(): void
     {
@@ -138,24 +146,20 @@ class AdminVisitTest extends TestCase
     }
 
     /**
-     * `ip` is nullable, and all the addressless visits form their own group.
-     * They must not be silently dropped, nor merged into a real address.
+     * `ip` is nullable, and all the addressless page views form their own
+     * group. They must not be silently dropped, nor merged into a real
+     * address.
      */
     public function test_visits_without_an_ip_form_their_own_row(): void
     {
         foreach (['d', 'e'] as $letter) {
-            Visit::query()->create([
+            $this->seedView([
                 'visitor_id' => str_repeat($letter, 32),
                 'ip' => null,
                 'device' => 'other',
                 'browser' => 'Firefox',
                 'os' => 'Linux',
-                'path' => 'products',
-                'referrer' => null,
-                'locale' => 'fr',
-                'visits_count' => 2,
-                'first_seen' => now()->subHours(2),
-                'last_seen' => now()->subHour(),
+                'created_at' => now()->subHour(),
             ]);
         }
 
@@ -167,44 +171,46 @@ class AdminVisitTest extends TestCase
 
         $this->assertNotNull($unknown, 'the addressless group was dropped');
         $this->assertSame(2, $unknown['visitors']);
-        $this->assertSame(4, $unknown['visits_count']);
+        $this->assertSame(2, $unknown['visits_count']);
     }
 
     /**
-     * `total` counts lines on the panel; `visitors` counts people. They differ by
-     * exactly the amount grouping concealed, so both are reported.
+     * `total` counts lines on the panel; `visitors` counts people. They
+     * differ by exactly the amount grouping concealed, so both are
+     * reported.
      */
     public function test_the_summary_separates_addresses_from_visitors(): void
     {
-        Visit::query()->create([
-            'visitor_id' => str_repeat('f', 32),
-            'ip' => '203.0.113.7',
-            'device' => 'desktop',
-            'browser' => 'Chrome',
-            'os' => 'macOS',
-            'path' => 'offers',
-            'referrer' => null,
-            'locale' => 'en',
-            'visits_count' => 3,
-            'first_seen' => now()->subHours(5),
-            'last_seen' => now()->subMinutes(10),
-        ]);
+        // A third identity back at the first address, with three more page
+        // views of its own.
+        foreach ([now()->subHours(5), now()->subHours(2), now()->subMinutes(10)] as $when) {
+            $this->seedView([
+                'visitor_id' => str_repeat('f', 32),
+                'device' => 'desktop',
+                'browser' => 'Chrome',
+                'os' => 'macOS',
+                'path' => 'offers',
+                'locale' => 'en',
+                'created_at' => $when,
+            ]);
+        }
 
         $summary = $this->actingAsAdmin()->getJson('/api/admin/visits')->assertOk()->json('summary');
 
-        $this->assertSame(2, $summary['total'], 'two addresses share the three visits');
+        $this->assertSame(2, $summary['total'], 'two addresses share the page views');
         $this->assertSame(3, $summary['visitors'], 'three identities are behind them');
+        // Four events from A, one from B, three from F.
         $this->assertSame(8, $summary['page_views']);
     }
 
     public function test_the_device_filter_narrows_the_list(): void
     {
         $response = $this->actingAsAdmin()
-            ->getJson('/api/admin/visits?device=mobile')
+            ->getJson('/api/admin/visits?device=desktop')
             ->assertOk();
 
         $this->assertCount(1, $response->json('visits'));
-        $this->assertSame('mobile', $response->json('visits.0.device'));
+        $this->assertSame('desktop', $response->json('visits.0.device'));
     }
 
     public function test_an_unknown_device_filter_is_rejected(): void
@@ -215,7 +221,7 @@ class AdminVisitTest extends TestCase
     }
 
     /**
-     * The summary describes the whole table, not the filtered page, so the
+     * The summary describes the whole log, not the filtered page, so the
      * numbers at the top do not change as the admin pages through results.
      */
     public function test_the_summary_counts_the_whole_table_even_when_filtered(): void
@@ -226,7 +232,7 @@ class AdminVisitTest extends TestCase
             ->json('summary');
 
         $this->assertSame(2, $summary['total'], 'the summary followed the filter');
-        $this->assertSame(5, $summary['page_views'], 'page views must sum the running counters');
+        $this->assertSame(5, $summary['page_views'], 'page views must count the filtered events');
     }
 
     public function test_recent_visitors_are_counted_by_window(): void
@@ -238,10 +244,33 @@ class AdminVisitTest extends TestCase
     }
 
     /**
+     * A group's browser and device come from the group's *newest* page view,
+     * filtered to the panel's device class. Without the window being aware
+     * of the filter, a desktop view could stand in for a group the panel is
+     * looking at as mobile.
+     */
+    public function test_the_group_reflects_the_newest_event_within_the_filter(): void
+    {
+        $visits = $this->actingAsAdmin()
+            ->getJson('/api/admin/visits?device=desktop')
+            ->assertOk()
+            ->json('visits');
+
+        $this->assertCount(1, $visits);
+
+        $row = collect($visits)->firstWhere('ip', '203.0.113.8');
+
+        // Visitor B's single desktop view is the newest desktop event at
+        // their address, and the window reports it, not a mobile row's
+        // details.
+        $this->assertSame('Chrome', $row['browser']);
+    }
+
+    /**
      * The paginator has to carry `links`, because the shared admin
      * <Pagination> component renders from `meta.links`. Hand-rolled
-     * current_page/last_page would leave the component with nothing to draw and
-     * the page would silently have no paging at all.
+     * current_page/last_page would leave the component with nothing to draw
+     * and the page would silently have no paging at all.
      */
     public function test_the_meta_carries_paginator_links(): void
     {
@@ -261,16 +290,39 @@ class AdminVisitTest extends TestCase
     {
         $admin = $this->actingAsAdmin();
 
-        // POST hits the index URI, which exists for GET, so Laravel answers 405
-        // "method not allowed" — still a refusal, and a more accurate one than
-        // 404 because the URL itself is real.
+        // POST hits the index URI, which exists for GET, so Laravel answers
+        // 405 "method not allowed" — still a refusal, and a more accurate
+        // one than 404 because the URL itself is real.
         $admin->postJson('/api/admin/visits', [])->assertStatus(405);
 
-        // The member URI has no route at all, in any method, so these are 404.
+        // The member URI has no route at all, in any method, so these are
+        // 404.
         $admin->deleteJson("/api/admin/visits/{$this->visit->id}")->assertNotFound();
         $admin->putJson("/api/admin/visits/{$this->visit->id}", [])->assertNotFound();
 
-        $this->assertSame(2, Visit::query()->count());
+        $this->assertSame(5, PageView::query()->count());
+    }
+
+    /**
+     * Seeds one page view behind the default identity, unless overridden.
+     *
+     * `forceCreate` because `$fillable` deliberately omits `created_at` —
+     * the service lets Eloquent stamp it — and a test that needs an old row
+     * needs its own timestamp, not another fresh one.
+     */
+    private function seedView(array $attributes = []): PageView
+    {
+        return PageView::forceCreate($attributes + [
+            'visitor_id' => str_repeat('a', 32),
+            'ip' => '203.0.113.7',
+            'device' => 'mobile',
+            'browser' => 'Safari',
+            'os' => 'iOS',
+            'path' => 'products',
+            'referrer' => null,
+            'locale' => 'fr',
+            'created_at' => now()->subHours(3),
+        ]);
     }
 
     private function actingAsAdmin()

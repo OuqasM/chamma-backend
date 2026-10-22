@@ -30,16 +30,16 @@ class TrackVisitor
         try {
             // The locale is already resolved by SetLocale, which runs earlier in
             // the stack, and reflects the route segment rather than a guess.
-            $recorded = $this->tracker->record(
+            $cookie = $this->tracker->record(
                 $request,
                 $request->attributes->get('locale') ?: app()->getLocale(),
             );
 
-            if ($recorded !== null) {
+            if ($cookie !== null) {
                 // Attached here rather than queued inside the service: the `api`
                 // middleware group has no `AddQueuedCookiesToResponse`, so a
                 // queued cookie would never reach the client.
-                $response->headers->setCookie($recorded['cookie']);
+                $response->headers->setCookie($cookie);
             }
         } catch (\Throwable $e) {
             // Deliberately swallowed and reported rather than rethrown.
