@@ -19,6 +19,8 @@ return [
         'category_in_use' => 'This category cannot be deleted: products are still attached to it.',
         'order_closed' => 'This order is already closed: its status can no longer be changed.',
         'image_type' => 'The file must be an image (JPEG, PNG, WebP or SVG).',
+        'variant_required' => "Choose a variant for :product before recording the order.",
+        'variant_unknown' => "The variant chosen for :product does not exist.",
     ],
 
     'store' => [
@@ -58,6 +60,10 @@ return [
         'product_required' => 'Choose a product.',
         'product_unknown' => 'One of the products no longer exists.',
         'quantity_required' => 'Set a quantity for each product.',
+        // A variant is not decoration: a product sold in sizes has to be
+        // ordered in one of them, and in a name the catalogue actually sells.
+        'variant_required' => 'Choose a variant for :product.',
+        'variant_unknown' => 'The variant chosen for :product does not exist.',
         'min' => [
             'string' => 'The :attribute field must be at least :min characters.',
             'numeric' => 'The :attribute field must be at least :min.',
@@ -87,6 +93,7 @@ return [
             'payment_method' => 'payment method',
             'quantity' => 'quantity',
             'product_id' => 'product',
+            'variant' => 'variant',
             'items' => 'cart',
             'sku' => 'SKU',
             'price' => 'price',

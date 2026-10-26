@@ -17,6 +17,7 @@ return [
         'items' => 'Articles',
         'product' => 'Produit',
         'quantity' => 'Qté',
+        'variant' => 'Variante',
         'unit_price' => 'Prix unitaire',
         'line_total' => 'Total ligne',
         'subtotal' => 'Sous-total',

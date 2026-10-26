@@ -19,6 +19,8 @@ return [
         'category_in_use' => 'Impossible de supprimer cette catégorie : des produits y sont rattachés.',
         'order_closed' => 'Cette commande est déjà terminée : son statut ne peut plus être modifié.',
         'image_type' => 'Le fichier doit être une image (JPEG, PNG, WebP ou SVG).',
+        'variant_required' => "Choisissez la variante pour :product avant d'enregistrer la commande.",
+        'variant_unknown' => "La variante choisie pour :product n'existe pas.",
     ],
 
     'store' => [
@@ -58,6 +60,10 @@ return [
         'product_required' => 'Choisissez un produit.',
         'product_unknown' => 'Un des produits n\'existe plus.',
         'quantity_required' => 'Indiquez une quantité pour chaque produit.',
+        // A variant is not decoration: a product sold in sizes has to be
+        // ordered in one of them, and in a name the catalogue actually sells.
+        'variant_required' => 'Choisissez une variante pour :product.',
+        'variant_unknown' => "La variante choisie pour :product n'existe pas.",
         'min' => [
             'string' => 'Le champ :attribute doit contenir au moins :min caractères.',
             'numeric' => 'Le champ :attribute doit être au moins :min.',
@@ -87,6 +93,7 @@ return [
             'payment_method' => 'Mode de paiement',
             'quantity' => 'Quantité',
             'product_id' => 'Produit',
+            'variant' => 'Variante',
             'items' => 'Panier',
             'sku' => 'Référence',
             'price' => 'Prix',

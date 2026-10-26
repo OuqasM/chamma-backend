@@ -135,6 +135,12 @@
                                                 {{ __('mail.order.quantity') }}: {{ $item->quantity }}
                                                 &middot;
                                                 {{ number_format((float) $item->unit_price, 2, '.', ' ') }} {{ config('chamma.currency.code') }}
+                                                @if ($item->variant)
+                                                    {{-- The variant is what decides which bottle
+                                                        leaves the shelf, so it reads as if it
+                                                        were part of the product name. --}}
+                                                    <br><span style="color:#2b2b2b;font-weight:600;">{{ __('mail.order.variant') }}: {{ $item->variant }}</span>
+                                                @endif
                                                 @if ($item->product_sku)
                                                     <br>{{ $item->product_sku }}
                                                 @endif

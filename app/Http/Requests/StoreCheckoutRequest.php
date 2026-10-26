@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Concerns\ValidatesOrderVariants;
 use App\Rules\MoroccanPhone;
 use App\Services\ShippingZoneService;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Validator;
 
 class StoreCheckoutRequest extends FormRequest
 {
+    use ValidatesOrderVariants;
+
     public function __construct(
         private readonly ShippingZoneService $zones,
     ) {}
@@ -76,13 +79,24 @@ class StoreCheckoutRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            // Reject duplicate lines so totals stay unambiguous.
-            $ids = collect($this->input('items', []))->pluck('product_id')->filter();
+            // Reject duplicate lines so totals stay unambiguous — two lines
+            // means two products, or two *variants* of one product. The same
+            // perfume in "50 ml" and "100 ml" is exactly how a cart legitimately
+            // carries one `product_id` twice, so the line's identity is product
+            // plus variant, and only a full product+variant repeat is a
+            // duplicate.
+            $keys = collect($this->input('items', []))
+                ->filter(fn ($line) => is_array($line))
+                ->map(fn ($line) => ((int) ($line['product_id'] ?? 0)).'::'.trim((string) ($line['variant'] ?? '')));
 
-            if ($ids->duplicates()->isNotEmpty()) {
+            if ($keys->duplicates()->isNotEmpty()) {
                 $validator->errors()->add('items', __('api.validation.attributes.items'));
             }
         });
+
+        // And the variant rules: a product sold in sizes has to be ordered in
+        // one of them, and in a name the catalogue actually sells.
+        $this->validateVariantLines($validator);
     }
 
     protected function prepareForValidation(): void

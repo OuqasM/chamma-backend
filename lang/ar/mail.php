@@ -17,6 +17,7 @@ return [
         'items' => 'المنتجات',
         'product' => 'المنتج',
         'quantity' => 'الكمية',
+        'variant' => 'الخيار',
         'unit_price' => 'سعر الوحدة',
         'line_total' => 'مجموع السطر',
         'subtotal' => 'المجموع الفرعي',

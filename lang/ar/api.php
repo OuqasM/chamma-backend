@@ -19,6 +19,8 @@ return [
         'category_in_use' => 'لا يمكن حذف هذه الفئة: لا تزال هناك منتجات مرتبطة بها.',
         'order_closed' => 'هذه الطلب منتهية بالفعل: لا يمكن تغيير حالتها بعد الآن.',
         'image_type' => 'يجب أن يكون الملف صورة (JPEG أو PNG أو WebP أو SVG).',
+        'variant_required' => 'اختر الخيار الخاص بـ :product قبل تسجيل الطلب.',
+        'variant_unknown' => 'الخيار المختار للمنتج :product غير موجود.',
     ],
 
     'store' => [
@@ -58,6 +60,8 @@ return [
         'product_required' => 'اختر منتجاً.',
         'product_unknown' => 'أحد المنتجات لم يعد موجوداً.',
         'quantity_required' => 'حدّد الكمية لكل منتج.',
+        'variant_required' => 'اختر خياراً للمنتج :product.',
+        'variant_unknown' => 'الخيار المختار للمنتج :product غير موجود.',
         'min' => [
             'string' => 'يجب أن يحتوي حقل :attribute على :min أحرف على الأقل.',
             'numeric' => 'يجب ألا يقل حقل :attribute عن :min.',
@@ -87,6 +91,7 @@ return [
             'payment_method' => 'طريقة الدفع',
             'quantity' => 'الكمية',
             'product_id' => 'المنتج',
+            'variant' => 'الخيار',
             'items' => 'السلة',
             'sku' => 'المرجع',
             'price' => 'السعر',

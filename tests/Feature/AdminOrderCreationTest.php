@@ -50,6 +50,24 @@ class AdminOrderCreationTest extends TestCase
     }
 
     /**
+     * The same product as the panel writes it: a flag and one row per size.
+     */
+    private function variantProduct(string $name = 'Oud Royale', int $stock = 10, float $price = 890.0): Product
+    {
+        $this->admin();
+
+        $this->postJson('/api/admin/products', [
+            'name' => $name,
+            'price' => $price,
+            'stock' => $stock,
+            'has_variants' => true,
+            'variants' => [['name' => '50 ml'], ['name' => '100 ml']],
+        ])->assertCreated();
+
+        return Product::query()->latest('id')->firstOrFail();
+    }
+
+    /**
      * @return array<string, mixed>
      *
      * `CASABLANCA` is upper case because that is how the carrier writes it in
@@ -114,6 +132,46 @@ class AdminOrderCreationTest extends TestCase
         $this->getJson('/api/admin/orders?search=Amina')
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    }
+
+    // ---------------------------------------------------------------
+    // Variants, taken over the phone
+    // ---------------------------------------------------------------
+
+    /**
+     * "Two of the 100 ml" is the decision the customer makes on the phone, and
+     * the order has to carry it — a typed order is not a lesser record that
+     * loses which size was actually sold.
+     */
+    public function test_the_owner_can_record_a_variant_with_the_order(): void
+    {
+        $product = $this->variantProduct();
+
+        $overrides = ['items' => [['product_id' => $product->id, 'quantity' => 2, 'variant' => '100 ml']]];
+
+        $this->postJson('/api/admin/orders', $this->payload($product, $overrides))
+            ->assertCreated()
+            ->assertJsonPath('order.items.0.variant', '100 ml');
+
+        // And the list the owner reads from carries it too, so the size is
+        // visible without opening the order.
+        $this->getJson('/api/admin/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.items.0.variant', '100 ml');
+    }
+
+    public function test_a_typed_order_in_a_variant_product_requires_a_variant(): void
+    {
+        $product = $this->variantProduct();
+
+        $this->postJson('/api/admin/orders', $this->payload($product))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.variant');
+
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'variant' => '75 ml']],
+        ]))->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.variant');
     }
 
     /**

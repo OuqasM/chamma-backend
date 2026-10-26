@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Concerns\ValidatesOrderVariants;
 use App\Services\PaymentService;
 use App\Services\ShippingZoneService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * An order the owner writes in by hand.
@@ -24,6 +26,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreOrderRequest extends FormRequest
 {
+    use ValidatesOrderVariants;
+
     public function authorize(): bool
     {
         // Authenticated and `admin` already: the route group carries both.
@@ -72,6 +76,7 @@ class StoreOrderRequest extends FormRequest
             'items' => ['required', 'array', 'min:1', 'max:50'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
+            'items.*.variant' => ['nullable', 'string', 'max:120'],
         ];
     }
 
@@ -89,6 +94,15 @@ class StoreOrderRequest extends FormRequest
             'items.*.product_id.exists' => __('api.validation.product_unknown'),
             'items.*.quantity.required' => __('api.validation.quantity_required'),
         ];
+    }
+
+    /**
+     * Same variant rules the storefront checkout answers to: a product sold in
+     * sizes is ordered in one of them, whatever way the order reached here.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $this->validateVariantLines($validator);
     }
 
     /**

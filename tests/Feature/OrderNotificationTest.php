@@ -58,6 +58,36 @@ class OrderNotificationTest extends TestCase
     }
 
     /**
+     * A product the shop sells in sizes, created exactly the way the panel
+     * creates one: variants are rows of their own, not a column.
+     */
+    private function variantProduct(int $price = 120, int $stock = 50): Product
+    {
+        $this->admin();
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Oud Royale',
+            'price' => $price,
+            'stock' => $stock,
+            'has_variants' => true,
+            'variants' => [['name' => '50 ml'], ['name' => '100 ml']],
+        ])->assertCreated();
+
+        return Product::query()->latest('id')->firstOrFail();
+    }
+
+    private function variantCheckout(Product $product, ?string $variant): TestResponse
+    {
+        return $this->postJson('/api/fr/checkout', [
+            'name' => 'Ahmed Ben Ali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 boulevard d Anfa',
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'variant' => $variant]],
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $overrides
      */
     private function checkout(array $overrides = []): TestResponse
@@ -141,6 +171,106 @@ class OrderNotificationTest extends TestCase
         $this->checkout()->assertCreated();
 
         Mail::assertSent(NewOrderNotification::class, fn ($mail) => $mail->hasTo('one@chama.ma') && $mail->hasTo('two@chama.ma'));
+    }
+
+    // ---------------------------------------------------------------
+    // The variant a product was sold in
+    // ---------------------------------------------------------------
+
+    /**
+     * A product sold in sizes is not ordered "1 × Oud Royale": the shelf has
+     * no bottle of that. A checkout line that does not name a variant is
+     * refused at the field the shopper should have filled in.
+     */
+    public function test_a_product_with_variants_requires_one_at_checkout(): void
+    {
+        Mail::fake();
+
+        $product = $this->variantProduct();
+
+        $this->variantCheckout($product, null)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.variant');
+
+        $this->assertSame(0, Order::query()->count());
+    }
+
+    public function test_a_variant_outside_the_catalogue_is_refused(): void
+    {
+        Mail::fake();
+
+        $product = $this->variantProduct();
+
+        // "75 ml" was never a size the shop sells, and no order may invent it.
+        $this->variantCheckout($product, '75 ml')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.variant');
+    }
+
+    public function test_a_variant_is_order_insensitive_and_stored_in_the_catalogue_spelling(): void
+    {
+        Mail::fake();
+
+        $product = $this->variantProduct();
+
+        // The catalogue says "50 ml"; "50 ML" is the same bottle. The order
+        // stores the catalogue's spelling, so reporting by variant never grows
+        // a second size that only differs by letter case.
+        $this->variantCheckout($product, '50 ML')->assertCreated();
+
+        $this->assertDatabaseHas('order_items', [
+            'product_id' => $product->id,
+            'variant' => '50 ml',
+        ]);
+    }
+
+    /**
+     * The same bottle in two sizes is two lines of one product — a legitimate
+     * cart, not the duplicated order the checkout used to refuse.
+     */
+    public function test_two_variants_of_one_product_are_not_a_duplicate_line(): void
+    {
+        Mail::fake();
+
+        $product = $this->variantProduct();
+
+        $this->postJson('/api/fr/checkout', [
+            'name' => 'Ahmed Ben Ali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 boulevard d Anfa',
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1, 'variant' => '50 ml'],
+                ['product_id' => $product->id, 'quantity' => 2, 'variant' => '100 ml'],
+            ],
+        ])->assertCreated();
+
+        $this->assertDatabaseCount('order_items', 2);
+
+        // The name the customer picked travels to the order, spelled the way
+        // the catalogue spells it.
+        $this->assertDatabaseHas('order_items', ['variant' => '100 ml', 'quantity' => 2]);
+    }
+
+    /**
+     * A product without variants has no bottle the shop sells under any name:
+     * a variant label on such a line would make the order read as a product
+     * that does not exist.
+     */
+    public function test_a_variant_label_on_a_plain_product_is_refused(): void
+    {
+        Mail::fake();
+
+        $product = $this->product();
+
+        $this->postJson('/api/fr/checkout', [
+            'name' => 'Ahmed Ben Ali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 boulevard d Anfa',
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'variant' => '50 ml']],
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.variant');
     }
 
     // ---------------------------------------------------------------
@@ -386,6 +516,40 @@ class OrderNotificationTest extends TestCase
             number_format((float) $order->total, 2, '.', ' '),
             $html
         );
+    }
+
+    /**
+     * A variant is part of what was actually bought: an order that reads
+     * "Oud Royale" twice with nothing naming the sizes forces the owner to
+     * guess what to put in the bag.
+     */
+    public function test_the_message_shows_the_variant_the_shopper_chose(): void
+    {
+        $product = $this->variantProduct();
+
+        $order = $this->placeOrder([
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'variant' => '50 ml']],
+        ]);
+
+        $html = (new NewOrderNotification($order))->render();
+
+        $this->assertStringContainsString(
+            __('mail.order.variant').': 50 ml',
+            $html
+        );
+    }
+
+    /**
+     * The reverse case keeps the mail calm: a plain product prints no empty
+     * "Variante:" line.
+     */
+    public function test_the_message_omits_the_variant_for_a_plain_product(): void
+    {
+        $order = $this->placeOrder();
+
+        $html = (new NewOrderNotification($order))->render();
+
+        $this->assertStringNotContainsString(__('mail.order.variant').':', $html);
     }
 
     /**

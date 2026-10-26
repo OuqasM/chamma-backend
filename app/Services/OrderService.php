@@ -71,7 +71,7 @@ class OrderService
             $products = Product::query()
                 ->whereIn('id', $ids)
                 ->lockForUpdate()
-                ->with(['translations', 'images', 'brand.translations'])
+                ->with(['translations', 'images', 'brand.translations', 'variants'])
                 ->get()
                 ->keyBy('id');
 
@@ -103,7 +103,7 @@ class OrderService
                     'product_name' => $this->nameIn($product, $locale),
                     'product_slug' => $product->slug($locale),
                     'product_sku' => $product->sku,
-                    'variant' => isset($line['variant']) && trim((string) $line['variant']) !== '' ? trim((string) $line['variant']) : null,
+                    'variant' => $this->variantFor($product, $line['variant'] ?? null, $locale),
                     'product_image' => $product->primaryImage()?->path,
                     'locale' => $locale,
                     'unit_price' => $unitPrice,
@@ -184,5 +184,49 @@ class OrderService
             ?? $product->translations->first();
 
         return (string) ($translation?->name ?: $product->sku);
+    }
+
+    /**
+     * What one order line says about which bottle it is.
+     *
+     * The validation layer has already checked the variant (see
+     * `ValidatesOrderVariants`), but re-deciding here makes the service safe for
+     * every caller, not only the two requests — the rules cannot drift between
+     * where they are validated and where they are written:
+     *
+     * - a product without variants keeps its line variant-free, whatever text
+     *   the browser happened to attach;
+     * - a product with variants must be ordered in one of them;
+     * - and the stored name is the catalogue's spelling rather than the
+     *   browser's, so "50ml" next to a stored "50 ml" does not multiply the
+     *   number of sizes reporting keeps finding.
+     */
+    private function variantFor(Product $product, mixed $chosen, string $locale): ?string
+    {
+        $names = $product->variants->pluck('name');
+
+        if ($names->isEmpty()) {
+            return null;
+        }
+
+        $chosen = trim((string) $chosen);
+
+        if ($chosen === '') {
+            throw new \DomainException(__('api.errors.variant_required', [
+                'product' => $this->nameIn($product, $locale),
+            ]));
+        }
+
+        $found = $names->first(
+            fn (string $name) => mb_strtolower(trim($name)) === mb_strtolower($chosen)
+        );
+
+        if ($found === null) {
+            throw new \DomainException(__('api.errors.variant_unknown', [
+                'product' => $this->nameIn($product, $locale),
+            ]));
+        }
+
+        return $found;
     }
 }
