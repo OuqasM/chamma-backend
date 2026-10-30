@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProductRequest;
 use App\Models\Product;
 use App\Models\ProductTranslation;
+use App\Services\CatalogService;
+use App\Services\HomeService;
 use App\Services\ImageLibrary;
 use App\Services\RestockNotifier;
 use App\Services\WaitlistService;
@@ -27,6 +29,8 @@ class ProductController extends Controller
         private readonly ImageLibrary $images,
         private readonly WaitlistService $waitlist,
         private readonly RestockNotifier $restockNotifier,
+        private readonly HomeService $homes,
+        private readonly CatalogService $catalog,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -80,6 +84,8 @@ class ProductController extends Controller
         // friends) are reflected in the response.
         $product->refresh();
 
+        $this->flushStorefrontCaches();
+
         return response()->json([
             'product' => new AdminProductResource($product->load(['translations', 'images', 'brand', 'categories', 'variants'])),
         ], 201);
@@ -101,6 +107,7 @@ class ProductController extends Controller
         });
 
         $this->announceRestock($product, $wasAvailable);
+        $this->flushStorefrontCaches();
 
         return response()->json([
             'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
@@ -112,6 +119,8 @@ class ProductController extends Controller
         // Soft delete: order history keeps referring to the product.
         $product->delete();
 
+        $this->flushStorefrontCaches();
+
         return response()->json(['message' => 'deleted']);
     }
 
@@ -120,12 +129,16 @@ class ProductController extends Controller
         $model = Product::withTrashed()->findOrFail($product);
         $model->restore();
 
+        $this->flushStorefrontCaches();
+
         return response()->json(['product' => new AdminProductResource($model->load(['translations', 'images', 'brand', 'categories', 'variants']))]);
     }
 
     public function toggle(Product $product): JsonResponse
     {
         $product->update(['is_active' => ! $product->is_active]);
+
+        $this->flushStorefrontCaches();
 
         return response()->json([
             'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
@@ -143,10 +156,26 @@ class ProductController extends Controller
         $product->update(['is_available' => ! $product->is_available]);
 
         $this->announceRestock($product, $wasAvailable);
+        $this->flushStorefrontCaches();
 
         return response()->json([
             'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
         ]);
+    }
+
+    /**
+     * Every storefront read this write can change is cached: the homepage
+     * payload (shelves, tiles, categories) and the listing bounds. One helper
+     * so the six write paths cannot drift apart on which caches they drop.
+     *
+     * Bounds do not read stock or availability, so the availability toggle
+     * over-flushes them — deliberately: two uniform calls are cheaper to keep
+     * correct than six remembered subsets.
+     */
+    private function flushStorefrontCaches(): void
+    {
+        $this->homes->flush();
+        $this->catalog->flush();
     }
 
     /**

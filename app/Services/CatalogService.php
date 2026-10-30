@@ -11,6 +11,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,6 +30,17 @@ class CatalogService
         'price_desc' => 'price_desc',
         'name' => 'name',
     ];
+
+    /**
+     * Bounds answer five aggregate questions about the whole catalogue, and
+     * every listing response pays for them. They only move when the owner
+     * writes a product, brand or category, so the answer is cached and the
+     * admin writes flush it. The TTL is the backstop for a missed flush, not
+     * the mechanism — same contract as `NavigationService`.
+     */
+    private const BOUNDS_TTL_SECONDS = 900;
+
+    private const BOUNDS_CACHE_KEY = 'catalog:bounds';
 
     /**
      * @param  array<string, mixed>  $filters
@@ -405,9 +417,36 @@ class CatalogService
     /**
      * Price bounds + counts used to render the filter sidebar.
      *
+     * Locale-independent — prices and counts are the same in every language —
+     * so one key serves every listing.
+     *
      * @return array{min: float, max: float, count: int, brands: int, categories: int}
      */
     public function bounds(): array
+    {
+        return Cache::remember(
+            self::BOUNDS_CACHE_KEY,
+            self::BOUNDS_TTL_SECONDS,
+            fn () => $this->computeBounds(),
+        );
+    }
+
+    /**
+     * Drop the cached bounds.
+     *
+     * Called from the admin writes that can change a price, an active flag or
+     * a taxonomy row. Placing an order does not call it: stock moves, but
+     * bounds read price and activity, not stock.
+     */
+    public function flush(): void
+    {
+        Cache::forget(self::BOUNDS_CACHE_KEY);
+    }
+
+    /**
+     * @return array{min: float, max: float, count: int, brands: int, categories: int}
+     */
+    private function computeBounds(): array
     {
         $row = Product::query()->active()
             ->selectRaw('MIN(price) as min, MAX(price) as max')

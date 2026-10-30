@@ -101,6 +101,24 @@ class CorsTest extends TestCase
     }
 
     /**
+     * The preflight answer is cacheable, or the storefront pays an OPTIONS
+     * round trip that carries no data before every single API call. The
+     * browser honours whatever number this header carries, so the setting
+     * going back to zero would silently double the request count of the
+     * split-host deployment — which is why it is pinned here.
+     */
+    public function test_the_preflight_answer_is_cacheable(): void
+    {
+        $response = $this->preflight('https://chammastore.com');
+
+        $this->assertSame(
+            '86400',
+            $response->headers->get('Access-Control-Max-Age'),
+            'A preflight that cannot be cached costs one wasted round trip per API call.',
+        );
+    }
+
+    /**
      * With nothing configured the API stays open, which is what local
      * development and a single origin deployment need.
      */

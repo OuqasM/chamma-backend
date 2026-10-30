@@ -23,3 +23,17 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Product artwork and uploads are served from this host (the storefront
+# proxies or links to /images/...), and Apache sends no cache policy of its
+# own — every product photo was revalidated on every view. A week matches the
+# nginx policy the Docker deployment already applies to the same files.
+#
+# The TTL is a week rather than a year because these filenames are *not*
+# content-hashed: generated artwork is addressed by product slug, so a
+# regenerated image can reappear under the path it already occupied.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(?:svg|jpe?g|png|webp|gif|ico)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>

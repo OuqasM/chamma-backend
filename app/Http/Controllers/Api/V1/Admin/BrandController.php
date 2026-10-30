@@ -6,6 +6,8 @@ use App\Concerns\HasSingleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BrandRequest;
 use App\Models\Brand;
+use App\Services\CatalogService;
+use App\Services\HomeService;
 use App\Services\ImageLibrary;
 use App\Services\NavigationService;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +22,8 @@ class BrandController extends Controller
     public function __construct(
         private readonly ImageLibrary $images,
         private readonly NavigationService $navigation,
+        private readonly HomeService $homes,
+        private readonly CatalogService $catalog,
     ) {}
 
     public function index(): AnonymousResourceCollection
@@ -55,6 +59,7 @@ class BrandController extends Controller
 
         // The shell's menu is cached per locale and this row is in it.
         $this->navigation->flush();
+        $this->flushStorefrontCaches();
 
         return response()->json(['brand' => new AdminBrandResource($brand->load('translations'))], 201);
     }
@@ -87,6 +92,7 @@ class BrandController extends Controller
 
         // The shell's menu is cached per locale and this row is in it.
         $this->navigation->flush();
+        $this->flushStorefrontCaches();
 
         return response()->json(['brand' => new AdminBrandResource($brand->fresh('translations'))]);
     }
@@ -104,8 +110,19 @@ class BrandController extends Controller
 
         // The brand is gone from every locale's menu.
         $this->navigation->flush();
+        $this->flushStorefrontCaches();
 
         return response()->json(['message' => 'deleted']);
+    }
+
+    /**
+     * The home payload (the brand tiles) and the listing bounds (the brand
+     * count) are cached; this row is in both.
+     */
+    private function flushStorefrontCaches(): void
+    {
+        $this->homes->flush();
+        $this->catalog->flush();
     }
 
     /**

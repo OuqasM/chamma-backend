@@ -35,7 +35,13 @@ return [
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    // The storefront is served from its own host, so every API call is
+    // cross-origin and the browser preflights it. With no max age each
+    // preflight costs a full OPTIONS round trip that carries no data, and
+    // a browsing session makes dozens of them. One day is the standard
+    // cacheable answer: it covers a session, and a configuration change
+    // still propagates to returning visitors the next day.
+    'max_age' => 86400,
 
     'supports_credentials' => false,
 

@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\DB;
  */
 class OrderService
 {
-    public function __construct(private readonly ShippingService $shipping) {}
+    public function __construct(
+        private readonly ShippingService $shipping,
+        private readonly HomeService $homes,
+    ) {}
 
     /**
      * Cart subtotal for the live delivery quote.
@@ -64,7 +67,7 @@ class OrderService
      */
     public function place(array $lines, array $customer, string $locale): Order
     {
-        return DB::transaction(function () use ($lines, $customer, $locale) {
+        $order = DB::transaction(function () use ($lines, $customer, $locale) {
             $ids = collect($lines)->pluck('product_id')->unique()->all();
 
             /** @var Collection<int, Product> $products */
@@ -143,6 +146,16 @@ class OrderService
 
             return $order->load('items');
         });
+
+        // The homepage shelves read stock, and this is the one write outside
+        // the admin panel that moves it. Flushed here rather than in the two
+        // controllers that call place(), for the same reason `variantFor()`
+        // re-decides what validation already checked: a service that owns the
+        // write is safe for every caller, including one added later. Outside
+        // the transaction on purpose — nothing changed if it rolled back.
+        $this->homes->flush();
+
+        return $order;
     }
 
     /**
