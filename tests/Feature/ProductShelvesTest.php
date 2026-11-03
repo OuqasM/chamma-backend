@@ -2,14 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CatalogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * The three product shelves on the home page.
+ * The product shelves: the shop's three curated lists.
  *
  * Each shows exactly four, in a carousel, so "the four most recent" and "the
  * four best selling" are literal claims the shopper can verify by counting.
@@ -20,10 +22,37 @@ use Tests\TestCase;
  * These products are created through the admin API so the rows and their
  * translations are shaped exactly as production shapes them; `created_at` and
  * `sales_count` are then set directly, because neither is an admin field.
+ *
+ * They used to be asserted through the homepage payload, which carried the
+ * three shelves. It does not any more: the storefront shows the whole
+ * catalogue under its hero and reads none of them, so the payload no longer
+ * spends three eager-loaded queries on answers nobody looks at. The rules
+ * behind the shelves are the shop's merchandising vocabulary and they stayed
+ * where they were, in `CatalogService` — so they are tested here against the
+ * service that owns them rather than against a transport that no longer
+ * carries them.
  */
-class HomeShelvesTest extends TestCase
+class ProductShelvesTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * The shelves, in the shape the API used to hand them over.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function shelf(string $name): array
+    {
+        $catalog = app(CatalogService::class);
+
+        $products = match ($name) {
+            'best_sellers' => $catalog->bestSellers(4, 'fr'),
+            'new_arrivals' => $catalog->newArrivals(4, 'fr'),
+            'offers' => $catalog->onOffer(4, 'fr'),
+        };
+
+        return ProductResource::collection($products)->resolve();
+    }
 
     private function admin(): void
     {
@@ -67,10 +96,27 @@ class HomeShelvesTest extends TestCase
             $this->create("Parfum {$i}", ['compare_at_price' => 1200, 'price' => 890]);
         }
 
-        $home = $this->getJson('/api/fr/home')->assertOk();
-
         foreach (['best_sellers', 'new_arrivals', 'offers'] as $shelf) {
-            $this->assertCount(4, $home->json($shelf), "{$shelf} should hold exactly four products");
+            $this->assertCount(4, $this->shelf($shelf), "{$shelf} should hold exactly four products");
+        }
+    }
+
+    public function test_the_homepage_payload_does_not_carry_the_shelves(): void
+    {
+        // The storefront shows the whole catalogue under its hero, so the
+        // shelves are not on the homepage any more. Carrying them anyway
+        // would mean three eager-loaded queries on every cache miss and a
+        // payload nobody reads on every request.
+        $this->create('Parfum 1', ['compare_at_price' => 1200, 'price' => 890]);
+
+        $home = $this->getJson('/api/fr/home')->assertOk()->json();
+
+        foreach (['best_sellers', 'new_arrivals', 'offers', 'categories'] as $field) {
+            $this->assertArrayNotHasKey(
+                $field,
+                $home,
+                "the homepage payload should not carry {$field} any more",
+            );
         }
     }
 
@@ -85,7 +131,7 @@ class HomeShelvesTest extends TestCase
             $ordered[] = $product;
         }
 
-        $ids = array_column($this->getJson('/api/fr/home')->json('new_arrivals'), 'id');
+        $ids = array_column($this->shelf('new_arrivals'), 'id');
 
         $this->assertSame(
             array_map(fn (Product $p) => $p->id, array_reverse(array_slice($ordered, -4))),
@@ -114,8 +160,8 @@ class HomeShelvesTest extends TestCase
             $this->stamp($this->create("Parfum {$i}"), ['created_at' => $same]);
         }
 
-        $first = array_column($this->getJson('/api/fr/home')->json('new_arrivals'), 'id');
-        $second = array_column($this->getJson('/api/fr/home')->json('new_arrivals'), 'id');
+        $first = array_column($this->shelf('new_arrivals'), 'id');
+        $second = array_column($this->shelf('new_arrivals'), 'id');
 
         $this->assertSame($first, $second, 'the same four, in the same order, on every request');
         $this->assertSame([6, 5, 4, 3], $first, 'the four highest ids break the tie, newest first');
@@ -131,7 +177,7 @@ class HomeShelvesTest extends TestCase
             $this->stamp($byId[$i], ['sales_count' => $count]);
         }
 
-        $ids = array_column($this->getJson('/api/fr/home')->json('best_sellers'), 'id');
+        $ids = array_column($this->shelf('best_sellers'), 'id');
 
         // 99, 60, 41, 12 -> products 2, 5, 3, 6.
         $this->assertSame(
@@ -154,7 +200,7 @@ class HomeShelvesTest extends TestCase
             $oldestFirst[] = $product;
         }
 
-        $ids = array_column($this->getJson('/api/fr/home')->json('best_sellers'), 'id');
+        $ids = array_column($this->shelf('best_sellers'), 'id');
 
         $this->assertSame(
             array_map(fn (Product $p) => $p->id, array_slice($oldestFirst, 0, 4)),
@@ -175,7 +221,7 @@ class HomeShelvesTest extends TestCase
             $this->stamp($this->create("Parfum {$i}"), ['created_at' => now()->subDays(10 - $i)]);
         }
 
-        $ids = array_column($this->getJson('/api/fr/home')->json('best_sellers'), 'id');
+        $ids = array_column($this->shelf('best_sellers'), 'id');
 
         $this->assertCount(4, $ids);
         $this->assertSame($sold->id, $ids[0], 'the only product with a sale leads the shelf');
@@ -201,7 +247,7 @@ class HomeShelvesTest extends TestCase
             $this->stamp($this->create("Parfum {$i}", ['price' => 890]), ['sales_count' => 500]);
         }
 
-        $payload = $this->getJson('/api/fr/home')->json('offers');
+        $payload = $this->shelf('offers');
 
         $this->assertCount(4, $payload);
 
@@ -232,7 +278,7 @@ class HomeShelvesTest extends TestCase
             $this->stamp($this->create("Parfum {$i}"), ['created_at' => now()->subDays($i)]);
         }
 
-        $ids = array_column($this->getJson('/api/fr/home')->json('new_arrivals'), 'id');
+        $ids = array_column($this->shelf('new_arrivals'), 'id');
 
         $this->assertNotContains($hidden->id, $ids);
         $this->assertCount(4, $ids, 'the shelf refills past the hidden product');
@@ -249,10 +295,8 @@ class HomeShelvesTest extends TestCase
             $this->stamp($this->create("Parfum {$i}"), ['created_at' => now()->subDays($i)]);
         }
 
-        $home = $this->getJson('/api/fr/home')->assertOk();
-
         foreach (['best_sellers', 'new_arrivals'] as $shelf) {
-            $ids = array_column($home->json($shelf), 'id');
+            $ids = array_column($this->shelf($shelf), 'id');
 
             $this->assertNotContains($unavailable->id, $ids);
             $this->assertCount(4, $ids, "{$shelf} refills past the unavailable product");
@@ -263,7 +307,7 @@ class HomeShelvesTest extends TestCase
     {
         $this->create('Oud Royale');
 
-        $product = $this->getJson('/api/fr/home')->json('new_arrivals.0');
+        $product = $this->shelf('new_arrivals')[0];
 
         $this->assertArrayNotHasKey(
             'is_new',

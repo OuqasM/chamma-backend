@@ -197,6 +197,25 @@ return [
         'related_limit' => 4,
         'min_price' => 0,
         'max_price' => 5000,
+
+        // The page sizes a catalogue listing may be cached at.
+        //
+        // The listing cache is keyed by the listing's state — the locale, the
+        // sort, the page size and the page — and every one of those dimensions
+        // has to be bounded, because an open-ended one is an unbounded number
+        // of cache keys. The page size arrives on the query string, so it is
+        // only cacheable at the sizes the shop actually uses: the API's own
+        // default, and the larger one the storefront asks for so that a page
+        // of results is a page of results rather than the first screenful of
+        // a long list.
+        'cacheable_per_page' => [12, 24],
+
+        // How many pages of a listing are cached.
+        //
+        // The first pages are the ones everybody reads. A shopper on the
+        // twentieth page knows exactly what they are looking for, and is rare
+        // enough that caching their page would only grow the table.
+        'cacheable_pages' => 10,
     ],
 
     /*

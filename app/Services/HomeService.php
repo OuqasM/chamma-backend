@@ -2,30 +2,35 @@
 
 namespace App\Services;
 
-use App\Http\Resources\CategoryResource;
-use App\Http\Resources\ProductResource;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * The homepage payload, assembled once and cached per locale.
  *
  * The homepage is the one page every visitor lands on, and its payload is the
- * most expensive read in the shop: three shelf queries (each with its own
- * eager loads), a `max(sales_count)` scan, the brand tiles join and the
- * category list. None of that changes between two shoppers arriving a minute
+ * most expensive read in the shop: the brand tiles join and the delivery
+ * promises. None of that changes between two shoppers arriving a minute
  * apart, so the assembled answer is cached and every write that can change it
  * flushes it.
  *
- * The writes that matter are the admin's product, brand and category edits and
- * the placing of an order (stock and sales figures move inside `place()`), and
- * each of those paths calls `flush()`. The TTL is the backstop for a write
+ * The writes that matter are the admin's product, brand and category edits,
+ * and each of those paths calls `flush()`. The TTL is the backstop for a write
  * path that is ever missed, not the primary mechanism — same contract as
  * `NavigationService`.
  *
- * Resources are resolved to plain arrays inside the cached closure: a cached
- * value has to survive serialization for the database cache driver, and an
- * unresolved resource collection does not promise that. The resolved array is
- * byte-identical to what `response()->json()` produced before.
+ * **What is not in here is as deliberate as what is.** The payload used to
+ * carry three product shelves — best sellers, new arrivals and offers — plus
+ * the category list. The storefront replaced the shelves with the whole
+ * catalogue under the hero, so it reads none of them: what the hero needs is
+ * the brand tiles, the delivery promises and the hero artwork, and the
+ * catalogue comes from the listing endpoint, which is cached in its own right
+ * (`CatalogService`). Carrying them here cost three eager-loaded queries on
+ * every cache miss, a payload nobody reads on every request, and a cache
+ * flush on every order — a sale moved the stock the shelves showed, and with
+ * the shelves gone it moves nothing here.
+ *
+ * The rules behind the shelves are the shop's merchandising vocabulary and
+ * they stay in `CatalogService`, where they are tested directly.
  */
 class HomeService
 {
@@ -56,7 +61,7 @@ class HomeService
     /**
      * Drop the cached homepage for every locale.
      *
-     * A price change is a price change in every language: the shelves read the
+     * A price change is a price change in every language: the tiles read the
      * same rows whatever locale they are rendered in, so like the navigation
      * flush this cannot be per-locale and the loop is the honest way to say so.
      */
@@ -81,14 +86,6 @@ class HomeService
                 'eyebrow' => __('api.store.tagline', [], $locale),
             ],
             'brands' => $this->catalog->brandTiles($locale),
-            'categories' => CategoryResource::collection(
-                $this->catalog->categories(onlyWithProducts: true)
-            )->resolve(),
-            // Four per shelf: each of these renders as a carousel, so a longer
-            // list means the shopper never sees the end of it without scrolling.
-            'best_sellers' => ProductResource::collection($this->catalog->bestSellers(4, $locale))->resolve(),
-            'new_arrivals' => ProductResource::collection($this->catalog->newArrivals(4, $locale))->resolve(),
-            'offers' => ProductResource::collection($this->catalog->onOffer(4, $locale))->resolve(),
             'promises' => [
                 'original' => __('api.store.original', [], $locale),
                 'nationwide' => __('api.store.nationwide', [], $locale),

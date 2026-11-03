@@ -7,8 +7,9 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductTranslation;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
@@ -43,17 +44,158 @@ class CatalogService
     private const BOUNDS_CACHE_KEY = 'catalog:bounds';
 
     /**
+     * The cached catalogue listing.
+     *
+     * A listing is the storefront's busiest read. The homepage shows the whole
+     * catalogue under its hero, the shop's own page is that same list with the
+     * filters on it, and the "newest" list is that same list under another
+     * sort. Each of those is a products query, a count query and four eager
+     * loads — translations, images, brand, categories — every single time.
+     *
+     * The answer only moves when the owner writes to the catalogue, so it is
+     * cached and the admin writes drop it, exactly like the bounds and the
+     * homepage payload. The TTL is the backstop for a write path that is ever
+     * missed, not the primary mechanism — same contract as `NavigationService`.
+     */
+    private const LISTING_TTL_SECONDS = 900;
+
+    private const LISTING_CACHE_PREFIX = 'catalog:listing:';
+
+    /**
      * @param  array<string, mixed>  $filters
      * @return LengthAwarePaginator<Product>
      */
     public function paginate(array $filters = [], ?int $perPage = null): LengthAwarePaginator
     {
+        $perPage ??= (int) config('chamma.catalog.per_page');
         $locale = $filters['locale'] ?? App::getLocale();
 
-        $query = $this->query($filters, $locale);
+        // The page the shopper asked for, resolved the same way the paginator
+        // resolves it, so the cached listing and a live one are the same page.
+        $page = Paginator::resolveCurrentPage('page');
 
-        return $query->paginate($perPage ?? (int) config('chamma.catalog.per_page'))
-            ->withQueryString();
+        $key = $this->listingCacheKey($locale, $filters, $perPage, $page);
+
+        if ($key !== null) {
+            $cached = Cache::get($key);
+
+            if (is_array($cached) && isset($cached['items'], $cached['total'])) {
+                return $this->paginatorFromCache($cached['items'], (int) $cached['total'], $perPage, $page);
+            }
+        }
+
+        $paginator = $this->query($filters, $locale)->paginate($perPage)->withQueryString();
+
+        if ($key !== null) {
+            Cache::put($key, [
+                'items' => $paginator->items(),
+                'total' => $paginator->total(),
+            ], self::LISTING_TTL_SECONDS);
+        }
+
+        return $paginator;
+    }
+
+    /**
+     * The cache key for a listing, or null when the listing is not cached.
+     *
+     * A listing is identified by its filters, and most of them are open-ended:
+     * a search term is whatever the shopper typed, a price bound is whatever
+     * they typed into a box, and a category or a brand slug is not proved to
+     * exist by the request that carries it. Caching any of those would mean a
+     * cache key per thing a shopper tried — an unbounded key space, and one
+     * that can be filled on purpose.
+     *
+     * What is left is the catalogue's own default view: no filter but the
+     * sort. That is the listing every storefront page asks for — the
+     * homepage's catalogue, the shop's page, the newest-first list — so it is
+     * where the cache earns its keep.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    private function listingCacheKey(string $locale, array $filters, int $perPage, int $page): ?string
+    {
+        // Only the sort may vary. `locale` is the other key the filters carry,
+        // and it is already part of the key.
+        if (array_diff(array_keys($filters), ['sort', 'locale']) !== []) {
+            return null;
+        }
+
+        $sort = (string) ($filters['sort'] ?? 'featured');
+
+        if (! array_key_exists($sort, self::SORTS)) {
+            return null;
+        }
+
+        if (! in_array($perPage, (array) config('chamma.catalog.cacheable_per_page'), true)) {
+            return null;
+        }
+
+        if ($page < 1 || $page > (int) config('chamma.catalog.cacheable_pages')) {
+            return null;
+        }
+
+        return $this->listingKey($locale, $sort, $perPage, $page);
+    }
+
+    /**
+     * The key a listing is stored under.
+     *
+     * Every dimension of it is bounded — the locales the shop publishes in, the
+     * sorts it offers, the page sizes it is cached at, the first pages of a
+     * listing — which is what lets a flush enumerate the whole key space
+     * instead of guessing at it.
+     */
+    private function listingKey(string $locale, string $sort, int $perPage, int $page): string
+    {
+        return self::LISTING_CACHE_PREFIX.$locale.'|'.$sort.'|'.$perPage.'|'.$page;
+    }
+
+    /**
+     * Every listing key that can exist.
+     *
+     * @return array<int, string>
+     */
+    private function listingCacheKeys(): array
+    {
+        $keys = [];
+
+        foreach (array_keys(config('chamma.locales')) as $locale) {
+            foreach (array_keys(self::SORTS) as $sort) {
+                foreach ((array) config('chamma.catalog.cacheable_per_page') as $perPage) {
+                    for ($page = 1; $page <= (int) config('chamma.catalog.cacheable_pages'); $page++) {
+                        $keys[] = $this->listingKey((string) $locale, (string) $sort, (int) $perPage, $page);
+                    }
+                }
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Rebuild a paginator from a cached listing.
+     *
+     * Built fresh rather than cached whole, because a paginator carries the
+     * URLs of the page it was made for: the path and the query string of the
+     * request that filled the cache. One that came out of the cache with
+     * yesterday's query string would page a shopper into the wrong list, and
+     * the path of the host the cache was filled from would follow it there.
+     *
+     * @param  array<int, Product>  $items
+     */
+    private function paginatorFromCache(array $items, int $total, int $perPage, int $page): LengthAwarePaginator
+    {
+        return (new LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => Paginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ],
+        ))->withQueryString();
     }
 
     /**
@@ -154,6 +296,15 @@ class CatalogService
     }
 
     /**
+     * The shop's curated shelves.
+     *
+     * The homepage used to carry three of these — best sellers, new arrivals
+     * and offers — and it does not any more: the storefront shows the whole
+     * catalogue under its hero, so the payload no longer spends three
+     * eager-loaded queries on answers nobody reads. The rules behind them are
+     * the shop's merchandising vocabulary and they stay here, tested
+     * directly in `ProductShelvesTest`.
+     *
      * @return Collection<int, Product>
      */
     public function featured(int $limit = 8, ?string $locale = null): Collection
@@ -175,7 +326,7 @@ class CatalogService
      * row id and the scan runs backwards — so this clause is belt-and-braces
      * against that coincidence rather than a fix for an observed bug. Kept
      * because "the 4 newest" should not depend on a storage engine's internals,
-     * and HomeShelvesTest pins the contract even though it cannot prove this
+     * and ProductShelvesTest pins the contract even though it cannot prove this
      * clause is load-bearing.
      *
      * @return Collection<int, Product>
@@ -190,6 +341,9 @@ class CatalogService
     }
 
     /**
+     * The shelf of what has actually sold, with an honest answer when nothing
+     * has.
+     *
      * @return Collection<int, Product>
      */
     public function bestSellers(int $limit = 8, ?string $locale = null): Collection
@@ -222,6 +376,8 @@ class CatalogService
     }
 
     /**
+     * The discounted shelf, best selling first.
+     *
      * @return Collection<int, Product>
      */
     public function onOffer(int $limit = 8, ?string $locale = null): Collection
@@ -432,7 +588,7 @@ class CatalogService
     }
 
     /**
-     * Drop the cached bounds.
+     * Drop the cached bounds and the cached listings.
      *
      * Called from the admin writes that can change a price, an active flag or
      * a taxonomy row. Placing an order does not call it: stock moves, but
@@ -441,6 +597,25 @@ class CatalogService
     public function flush(): void
     {
         Cache::forget(self::BOUNDS_CACHE_KEY);
+
+        $this->flushListings();
+    }
+
+    /**
+     * Drop every cached listing.
+     *
+     * The listings are keyed by their state rather than by a name, so there is
+     * no single key to forget — but every dimension of that state is bounded,
+     * so the whole key space can be enumerated and dropped.
+     *
+     * Separate from `flush()` because an order moves stock, and stock is in
+     * the listing, while the bounds read price and activity and do not move.
+     */
+    public function flushListings(): void
+    {
+        foreach ($this->listingCacheKeys() as $key) {
+            Cache::forget($key);
+        }
     }
 
     /**

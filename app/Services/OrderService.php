@@ -19,7 +19,7 @@ class OrderService
 {
     public function __construct(
         private readonly ShippingService $shipping,
-        private readonly HomeService $homes,
+        private readonly CatalogService $catalog,
     ) {}
 
     /**
@@ -147,13 +147,19 @@ class OrderService
             return $order->load('items');
         });
 
-        // The homepage shelves read stock, and this is the one write outside
-        // the admin panel that moves it. Flushed here rather than in the two
-        // controllers that call place(), for the same reason `variantFor()`
-        // re-decides what validation already checked: a service that owns the
-        // write is safe for every caller, including one added later. Outside
-        // the transaction on purpose — nothing changed if it rolled back.
-        $this->homes->flush();
+        // A sale moves stock, and the catalogue listing reads stock: the price
+        // and the availability of a bottle that just sold out, and the order
+        // the featured sort puts it in. The listing cache is flushed here
+        // rather than in the two controllers that call place(), for the same
+        // reason `variantFor()` re-decides what validation already checked: a
+        // service that owns the write is safe for every caller, including one
+        // added later. Outside the transaction on purpose — nothing changed if
+        // it rolled back.
+        //
+        // The homepage payload is not flushed, because nothing in it moves when
+        // a bottle sells: the brand tiles and the delivery promises do not
+        // depend on what is in stock.
+        $this->catalog->flushListings();
 
         return $order;
     }
