@@ -20,10 +20,7 @@ class ProductController extends Controller
     {
         $filters = self::filters($request);
 
-        $products = $this->catalog->paginate(
-            $filters,
-            (int) $request->integer('per_page', (int) config('chamma.catalog.per_page')),
-        );
+        $products = $this->catalog->paginate($filters, $this->perPage($request));
 
         return ProductResourceCollection::make($products, $filters, [
             'sorts' => array_keys(CatalogService::SORTS),
@@ -55,17 +52,30 @@ class ProductController extends Controller
     }
 
     /**
-     * Type-ahead search across name, brand and category.
+     * Search across the catalogue, paginated like the catalogue.
+     *
+     * It used to answer with a fixed handful of products — `?limit=8` — and no
+     * paginator at all, so the search page could show eight rows and nothing
+     * else: a shopper searching for "oud" was shown what matched and never
+     * saw the rest of it. Search is the catalogue with a term on it, so it
+     * takes the same filters, the same page size and the same page row.
+     *
+     * The term arrives as `q` from the storefront; `search` is the name the
+     * filter set uses, and is accepted too.
      */
     public function search(Request $request): AnonymousResourceCollection
     {
-        $term = trim((string) $request->input('q', ''));
+        $filters = self::filters($request);
 
-        $products = $this->catalog->query(['search' => $term], App::getLocale())
-            ->take((int) $request->integer('limit', 8))
-            ->get();
+        $term = trim((string) $request->query('q', $request->query('search', '')));
 
-        return ProductResource::collection($products);
+        if ($term !== '') {
+            $filters['search'] = $term;
+        }
+
+        $products = $this->catalog->paginate($filters, $this->perPage($request));
+
+        return ProductResourceCollection::make($products, $filters);
     }
 
     /**

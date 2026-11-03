@@ -29,7 +29,7 @@ class CategoryController extends Controller
         $filters = ['category' => $category->slug, 'sort' => $request->query('sort', 'featured')];
 
         return ProductResourceCollection::make(
-            $this->catalog->paginate($filters),
+            $this->catalog->paginate($filters, $this->perPage($request)),
             $filters,
             ['category' => new CategoryResource($category)],
         );

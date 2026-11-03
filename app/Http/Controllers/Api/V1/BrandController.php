@@ -29,7 +29,7 @@ class BrandController extends Controller
         $filters = ['brand' => $brand->slug, 'sort' => $request->query('sort', 'featured')];
 
         return ProductResourceCollection::make(
-            $this->catalog->paginate($filters),
+            $this->catalog->paginate($filters, $this->perPage($request)),
             $filters,
             ['brand' => new BrandResource($brand)],
         );
