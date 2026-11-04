@@ -79,6 +79,15 @@ class StoreOrderRequest extends FormRequest
             // so the panel says which of the two it means.
             'remember_fee' => ['nullable', 'boolean'],
 
+            // The owner's own figure for what the order earned, when the
+            // sums do not know what they know: the rate the supplier actually
+            // gave, the courier that charged more than the shop billed.
+            //
+            // Left empty, the benefit is worked out — the total minus the
+            // goods minus the parcel — and keeps following the purchase
+            // prices when they are rectified. Typed in, it is the figure.
+            'benefit' => ['nullable', 'numeric', 'min:-9999999', 'max:9999999'],
+
             // The stock decisions the owner made while writing the order: this
             // bottle has just sold out, or this size is discontinued for good.
             //

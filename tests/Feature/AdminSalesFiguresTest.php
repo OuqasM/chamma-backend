@@ -213,6 +213,107 @@ class AdminSalesFiguresTest extends TestCase
     // ---------------------------------------------------------------
 
     /**
+     * The figure can be given while the order is written: the owner types it
+     * as they type the order, and the order carries it.
+     */
+    public function test_the_figure_can_be_given_while_the_order_is_written(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'benefit' => 820,
+        ]))->assertCreated()
+            ->assertJsonPath('order.benefit_override', '820.00')
+            ->assertJsonPath('order.benefit', 820);
+
+        // And it is the figure the list and the summary count.
+        $this->getJson('/api/admin/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.benefit', 820)
+            ->assertJsonPath('summary.total_benefit', 820);
+    }
+
+    /**
+     * An order written without a figure keeps the calculation, so it keeps
+     * following the purchase prices when they are rectified.
+     */
+    public function test_an_order_written_without_a_figure_keeps_the_calculation(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $this->postJson('/api/admin/orders', $this->payload($product))
+            ->assertCreated()
+            ->assertJsonPath('order.benefit_override', null)
+            ->assertJsonPath('order.benefit', 780);
+    }
+
+    /**
+     * The figure can be given as the parcel goes out: it travels with the
+     * status change that delivers the order.
+     */
+    public function test_the_figure_can_be_given_as_the_order_is_handed_over(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $reference = $this->postJson('/api/fr/checkout', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 rue Ibn Batouta',
+            'payment_method' => 'cod',
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ])->assertCreated()->json('order.reference');
+
+        $id = Order::query()->where('reference', $reference)->firstOrFail()->id;
+
+        // The parcel goes out, and the owner says what the sale was worth.
+        $this->patchJson('/api/admin/orders/'.$id.'/status', [
+            'status' => 'delivered',
+            'benefit' => 450,
+        ])->assertOk()
+            ->assertJsonPath('order.benefit_override', '450.00')
+            ->assertJsonPath('order.benefit', 450);
+    }
+
+    /**
+     * A handover without a figure leaves the calculation standing.
+     */
+    public function test_a_handover_without_a_figure_keeps_the_calculation(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $reference = $this->postJson('/api/fr/checkout', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 rue Ibn Batouta',
+            'payment_method' => 'cod',
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ])->assertCreated()->json('order.reference');
+
+        $id = Order::query()->where('reference', $reference)->firstOrFail()->id;
+
+        $this->patchJson('/api/admin/orders/'.$id.'/status', ['status' => 'delivered'])
+            ->assertOk()
+            ->assertJsonPath('order.benefit_override', null)
+            ->assertJsonPath('order.benefit', 390);
+    }
+
+    /**
+     * A figure that is not a number is refused rather than stored as zero.
+     */
+    public function test_a_figure_that_is_not_a_number_is_refused(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $id = $this->postJson('/api/admin/orders', $this->payload($product))->assertCreated()->json('order.id');
+
+        $this->patchJson('/api/admin/orders/'.$id.'/benefit', ['benefit' => 'beaucoup'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('benefit');
+    }
+
+    /**
      * A benefit the owner set by hand is the benefit: it replaces the
      * calculation in the row, in the list and in the summary, rather than
      * bending it.

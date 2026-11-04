@@ -214,6 +214,14 @@ class OrderController extends Controller
 
                 $this->applyStockActions($data['stock_actions'] ?? []);
 
+                // The owner's own figure for what the order earned, given
+                // while the order was written. It belongs to the order, so it
+                // is written with it: an order that is not written leaves no
+                // figure behind either.
+                if (isset($data['benefit']) && $data['benefit'] !== null) {
+                    $order->update(['benefit_override' => (float) $data['benefit']]);
+                }
+
                 return $order;
             });
         } catch (\DomainException $e) {
@@ -327,6 +335,13 @@ class OrderController extends Controller
         // was created — it was delivered from the start.
         if ($order->status === OrderStatus::Delivered) {
             $order = $orders->settleCost($order);
+        }
+
+        // And the figure the owner gave as the parcel went out, if they gave
+        // one: the handover is the moment they know what the sale was worth.
+        // A figure they gave earlier stands; only a new one replaces it.
+        if ($order->status === OrderStatus::Delivered && $request->validated('benefit') !== null) {
+            $order->update(['benefit_override' => (float) $request->validated('benefit')]);
         }
 
         if ($order->status === OrderStatus::Cancelled && $order->payment_status === 'paid') {
