@@ -92,6 +92,7 @@ return [
             'notes' => 'delivery instructions',
             'payment_method' => 'payment method',
             'quantity' => 'quantity',
+            'shipping_cost' => 'delivery fee',
             'product_id' => 'product',
             'variant' => 'variant',
             'items' => 'cart',

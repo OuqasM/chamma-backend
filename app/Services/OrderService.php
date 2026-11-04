@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
+use App\Support\PhoneNumber;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +21,7 @@ class OrderService
     public function __construct(
         private readonly ShippingService $shipping,
         private readonly CatalogService $catalog,
+        private readonly CustomerService $customers,
     ) {}
 
     /**
@@ -64,10 +66,26 @@ class OrderService
     /**
      * @param  array<int, array{product_id:int, quantity:int}>  $lines
      * @param  array<string, mixed>  $customer
+     *
+     * The status the order is created with. A checkout order starts as new
+     * because nobody has looked at it yet; an order the owner writes in the
+     * panel starts as delivered, because the owner is the one who happened —
+     * the customer called, the parcel went out, the money changed hands.
+     *
+     * The delivery fee, when it is given. The carrier's price for the city is
+     * what an order is normally charged, and the server works it out; the
+     * owner is the one who decides what *this* order costs to deliver — a
+     * negotiated rate, a free delivery — so the panel can say so. A checkout
+     * order never passes one: the shopper does not get to price the delivery.
      */
-    public function place(array $lines, array $customer, string $locale): Order
-    {
-        $order = DB::transaction(function () use ($lines, $customer, $locale) {
+    public function place(
+        array $lines,
+        array $customer,
+        string $locale,
+        OrderStatus $status = OrderStatus::New,
+        ?float $shippingCost = null,
+    ): Order {
+        $order = DB::transaction(function () use ($lines, $customer, $locale, $status, $shippingCost) {
             $ids = collect($lines)->pluck('product_id')->unique()->all();
 
             /** @var Collection<int, Product> $products */
@@ -118,7 +136,10 @@ class OrderService
             }
 
             $subtotal = round($subtotal, 2);
-            $shippingCost = $this->shipping->cost($subtotal, (string) $customer['city']);
+
+            // The carrier's price for the city, unless the owner has said what
+            // this order costs to deliver.
+            $shippingCost = $shippingCost ?? $this->shipping->cost($subtotal, (string) $customer['city']);
 
             // The shopper types one name; the columns stay split so the admin
             // list and any future invoice keep their first/last columns.
@@ -130,7 +151,11 @@ class OrderService
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'customer_name' => trim($customer['name']),
-                'phone' => $customer['phone'],
+                // The canonical form: ten characters, the leading zero, no
+                // country code. The same number the customer record is keyed
+                // by, so the two join and the panel reads one way.
+                'phone' => PhoneNumber::normalise((string) $customer['phone']) ?? $customer['phone'],
+                'phone_normalised' => PhoneNumber::normalise((string) $customer['phone']),
                 'city' => $customer['city'],
                 'address' => $customer['address'],
                 'notes' => $customer['notes'] ?? null,
@@ -139,10 +164,25 @@ class OrderService
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total' => round($subtotal + $shippingCost, 2),
-                'status' => OrderStatus::New,
+                'status' => $status,
             ]);
 
             $order->items()->createMany($items);
+
+            // The customer behind the order is recorded with it, inside the
+            // same transaction: an order that commits without leaving a
+            // customer behind is an order the panel cannot find again by
+            // number, and a refused order must not leave one either.
+            //
+            // The phone is the identity, so this is also the only place a
+            // customer row is born — a person the shop has sold to, not a
+            // person somebody guessed at.
+            $this->customers->record(
+                (string) ($customer['name'] ?? ''),
+                (string) ($customer['phone'] ?? ''),
+                (string) ($customer['city'] ?? '') ?: null,
+                (string) ($customer['address'] ?? '') ?: null,
+            );
 
             return $order->load('items');
         });

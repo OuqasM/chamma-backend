@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -38,11 +39,21 @@ class OrderController extends Controller
 
         if ($search = trim((string) $request->query('search'))) {
             $like = '%'.$search.'%';
+
+            // The number is compared the way it is written and the way it is
+            // normally written. An order recorded in the panel carries the
+            // canonical form ("+212612345678"), so a search typed the way
+            // people say it ("0612345678") has to be reduced the same way
+            // before it is compared — otherwise the owner would type a number
+            // they know and be told they have no orders.
+            $national = PhoneNumber::nationalDigits($search);
+
             $query->where(fn ($q) => $q
                 ->where('reference', 'like', $like)
                 ->orWhere('customer_name', 'like', $like)
                 ->orWhere('phone', 'like', $like)
                 ->orWhere('city', 'like', $like)
+                ->when($national !== null, fn ($q) => $q->orWhere('phone', 'like', '%'.$national.'%'))
             );
         }
 
@@ -65,6 +76,12 @@ class OrderController extends Controller
     /**
      * Record an order taken over the phone or at the counter.
      *
+     * It is created as **delivered**, and that is the whole point of writing
+     * it here. The owner is recording a conversation they just had: the
+     * customer called, the parcel went out, the money changed hands. An order
+     * that landed as "new" would sit in the list waiting for somebody to
+     * remember to move it along — the very chore the panel exists to remove.
+     *
      * No order email is sent, and that is a real difference from checkout
      * rather than an oversight. The alert exists to tell the owner something
      * happened while they were elsewhere; here they are the one who happened,
@@ -84,6 +101,14 @@ class OrderController extends Controller
                 $data['items'],
                 $data,
                 $data['locale'] ?? (string) App::getLocale(),
+                OrderStatus::Delivered,
+                // What the owner is charging for the delivery. Null means "the
+                // carrier's price for the city", which is what the panel
+                // fills in; a number means the owner has decided otherwise —
+                // a negotiated rate, or a free delivery.
+                array_key_exists('shipping_cost', $data) && $data['shipping_cost'] !== null
+                    ? (float) $data['shipping_cost']
+                    : null,
             );
         } catch (\DomainException $e) {
             // Sold out, deactivated, or no longer enough stock: a fact about
@@ -97,10 +122,13 @@ class OrderController extends Controller
 
         // Cash collected, or a transfer already seen: worth recording at the
         // moment of writing the order, because there is no later prompt to
-        // remember it by. Anything else is left to the status flow.
-        if (($data['payment_status'] ?? null) === 'paid') {
-            $order->update(['payment_status' => 'paid']);
-        }
+        // remember it by. A delivered order is collected on delivery, the same
+        // rule that applies when one is moved to delivered from the list — so
+        // the default here is paid, and the owner only has to say otherwise
+        // for a transfer that has not arrived yet.
+        $order->update([
+            'payment_status' => ($data['payment_status'] ?? 'paid') === 'pending' ? 'pending' : 'paid',
+        ]);
 
         return response()->json(['order' => new OrderResource($order->fresh('items'))], 201);
     }

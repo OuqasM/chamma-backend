@@ -191,6 +191,7 @@ return [
         'items' => 'Panier',
         'product_id' => 'Produit',
         'quantity' => 'Quantité',
+        'shipping_cost' => 'Frais de livraison',
         'locale' => 'Langue',
         'sku' => 'Référence',
         'slug' => 'Identifiant d’URL',

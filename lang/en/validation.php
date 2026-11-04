@@ -191,6 +191,7 @@ return [
         'items' => 'cart',
         'product_id' => 'product',
         'quantity' => 'quantity',
+        'shipping_cost' => 'delivery fee',
         'locale' => 'language',
         'sku' => 'SKU',
         'slug' => 'URL slug',

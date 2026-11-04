@@ -90,6 +90,7 @@ return [
             'notes' => 'ملاحظات التوصيل',
             'payment_method' => 'طريقة الدفع',
             'quantity' => 'الكمية',
+            'shipping_cost' => 'رسوم التوصيل',
             'product_id' => 'المنتج',
             'variant' => 'الخيار',
             'items' => 'السلة',

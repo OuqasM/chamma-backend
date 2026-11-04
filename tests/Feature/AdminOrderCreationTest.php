@@ -100,6 +100,9 @@ class AdminOrderCreationTest extends TestCase
         $this->postJson('/api/admin/orders', $this->payload($product))
             ->assertCreated()
             ->assertJsonPath('order.customer.name', 'Amina Benali')
+            // The number is reduced to the one form the shop agrees on before
+            // anything reads it, so the order, the customer and the panel all
+            // speak about the same handset.
             ->assertJsonPath('order.customer.phone', '0612345678');
 
         $this->assertDatabaseCount('orders', 1);
@@ -107,8 +110,10 @@ class AdminOrderCreationTest extends TestCase
             'customer_name' => 'Amina Benali',
             'first_name' => 'Amina',
             'last_name' => 'Benali',
-            'status' => 'new',
-            'payment_status' => 'pending',
+            // Written in the panel means it already happened: the customer
+            // called, the parcel went out, the money changed hands.
+            'status' => 'delivered',
+            'payment_status' => 'paid',
         ]);
     }
 
@@ -132,6 +137,44 @@ class AdminOrderCreationTest extends TestCase
         $this->getJson('/api/admin/orders?search=Amina')
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * The panel's orders carry the canonical number, and the owner searches
+     * the way people say it. A search that only understood "0612345678"
+     * would find nothing for a number the owner knows by heart.
+     */
+    public function test_the_orders_list_finds_an_order_by_the_number_as_it_is_spoken(): void
+    {
+        $product = $this->product();
+
+        $this->postJson('/api/admin/orders', $this->payload($product))->assertCreated();
+
+        $this->getJson('/api/admin/orders?search=0612345678')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->getJson('/api/admin/orders?search=0612')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * The reference is given to the customer, who then tracks the order with
+     * the number they always use — not with the shape this shop happens to
+     * write it in.
+     */
+    public function test_the_customer_can_track_an_order_recorded_in_the_panel(): void
+    {
+        $product = $this->product();
+
+        $reference = $this->postJson('/api/admin/orders', $this->payload($product))
+            ->assertCreated()
+            ->json('order.reference');
+
+        $this->getJson('/api/fr/orders/'.$reference.'?phone=0612345678')
+            ->assertOk()
+            ->assertJsonPath('order.reference', $reference);
     }
 
     // ---------------------------------------------------------------
@@ -209,6 +252,98 @@ class AdminOrderCreationTest extends TestCase
         $this->getJson('/api/admin/orders')
             ->assertOk()
             ->assertJsonPath('data.0.customer.whatsapp_url', 'https://wa.me/212512345678');
+    }
+
+    // ---------------------------------------------------------------
+    // The delivery fee
+    // ---------------------------------------------------------------
+
+    /**
+     * The delivery fee is the carrier's price for the city, worked out by the
+     * server, and it is charged when nobody says otherwise.
+     */
+    public function test_the_delivery_fee_is_the_carriers_price_for_the_city(): void
+    {
+        $product = $this->product(stock: 10, price: 890.0);
+
+        $this->postJson('/api/admin/orders', $this->payload($product))
+            ->assertCreated()
+            ->assertJsonPath('order.shipping_cost', 35)
+            ->assertJsonPath('order.total', 1815);
+    }
+
+    /**
+     * The owner decides what *this* order costs to deliver: a negotiated
+     * rate, or a free delivery. The carrier's price is what an order is
+     * normally charged; the owner is the one who knows this customer.
+     */
+    public function test_the_owner_can_set_the_delivery_fee(): void
+    {
+        $product = $this->product(stock: 10, price: 890.0);
+
+        $response = $this->postJson('/api/admin/orders', $this->payload($product, [
+            'shipping_cost' => 20,
+        ]))->assertCreated();
+
+        $response->assertJsonPath('order.shipping_cost', 20);
+        // And the total is the subtotal plus the fee that was charged.
+        $response->assertJsonPath('order.subtotal', 1780);
+        $response->assertJsonPath('order.total', 1800);
+    }
+
+    /**
+     * A free delivery is a real thing a shop does — for a regular, for an
+     * order taken over the phone, to make up for a late one. It is zero, and
+     * the total says so.
+     */
+    public function test_the_owner_can_make_the_delivery_free(): void
+    {
+        $product = $this->product(stock: 10, price: 890.0);
+
+        $response = $this->postJson('/api/admin/orders', $this->payload($product, [
+            'shipping_cost' => 0,
+        ]))->assertCreated();
+
+        $response->assertJsonPath('order.shipping_cost', 0);
+        $response->assertJsonPath('order.total', 1780);
+    }
+
+    /**
+     * A mistyped figure must not turn a 35-dirham delivery into a
+     * 35 000-dirham one.
+     */
+    public function test_an_impossible_fee_is_refused(): void
+    {
+        $product = $this->product();
+
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'shipping_cost' => 35000,
+        ]))->assertUnprocessable()->assertJsonValidationErrors('shipping_cost');
+
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'shipping_cost' => -5,
+        ]))->assertUnprocessable()->assertJsonValidationErrors('shipping_cost');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    /**
+     * The storefront does not get to price the delivery: the shopper's
+     * request is ignored and the carrier's price is charged.
+     */
+    public function test_a_checkout_order_cannot_set_the_fee(): void
+    {
+        $product = $this->product(stock: 10, price: 890.0);
+
+        $this->postJson('/api/fr/checkout', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 rue Ibn Batouta',
+            'payment_method' => 'cod',
+            'shipping_cost' => 0,
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ])->assertCreated()->assertJsonPath('order.shipping_cost', 35);
     }
 
     // ---------------------------------------------------------------

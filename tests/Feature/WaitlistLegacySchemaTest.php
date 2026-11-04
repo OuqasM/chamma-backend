@@ -142,7 +142,7 @@ class WaitlistLegacySchemaTest extends TestCase
         \DB::table('waitlist_entries')->insert([
             'product_id' => $this->soldOutProduct()->id,
             'phone' => '0612345678',
-            'phone_normalised' => '+212612345678',
+            'phone_normalised' => '0612345678',
             'locale' => 'fr',
             'created_at' => now(),
             'updated_at' => now(),

@@ -77,7 +77,9 @@ class WaitlistService
         $created = ! $entry->exists;
 
         $entry->name = $name;
-        $entry->phone = $phone;
+        // The canonical form, the same one every other number in the shop is
+        // written in: ten characters, the leading zero, no country code.
+        $entry->phone = $normalised;
         $entry->locale = $locale ?: (string) config('chamma.default_locale', 'fr');
 
         // A returning signup clears a previous notification, so somebody who
@@ -104,7 +106,7 @@ class WaitlistService
                 ->firstOrFail();
 
             $entry->name = $name;
-            $entry->phone = $phone;
+            $entry->phone = $normalised;
             $entry->locale = $locale ?: (string) config('chamma.default_locale', 'fr');
             $entry->notified_at = null;
             $entry->notified_channel = null;

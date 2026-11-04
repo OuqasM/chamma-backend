@@ -11,6 +11,7 @@ use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\ShippingService;
 use App\Services\ShippingZoneService;
+use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -72,7 +73,20 @@ class CheckoutController extends Controller
         $order = Order::query()
             ->with('items')
             ->where('reference', $reference)
-            ->when($phone !== '', fn ($q) => $q->where('phone', $phone))
+            ->when($phone !== '', function ($q) use ($phone) {
+                $q->where('phone', $phone);
+
+                // The number is compared the way it was written and the way it
+                // is normally written. A website order keeps the digits the
+                // customer typed, and an order recorded in the panel carries
+                // the canonical form — so the same customer would otherwise
+                // have to remember which way round this shop wrote theirs.
+                $national = PhoneNumber::nationalDigits($phone);
+
+                if ($national !== null && strlen($national) === 9) {
+                    $q->orWhere('phone', 'like', '%'.$national.'%');
+                }
+            })
             ->first();
 
         if (! $order) {

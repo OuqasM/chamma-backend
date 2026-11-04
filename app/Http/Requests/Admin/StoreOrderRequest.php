@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use App\Concerns\ValidatesOrderVariants;
+use App\Rules\MoroccanPhone;
 use App\Services\PaymentService;
 use App\Services\ShippingZoneService;
+use App\Support\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\Rule;
@@ -44,16 +46,31 @@ class StoreOrderRequest extends FormRequest
             // columns by OrderService, exactly as a website order is.
             'name' => ['required', 'string', 'min:2', 'max:120'],
 
-            // MoroccanPhone is the storefront's rule, and it exists to catch a
-            // customer mistyping a number they expect to be called back on. Here
-            // the owner is transcribing what someone said on the phone; if they
-            // write "+212 6 12 34 56 78" that is the number to dial, and second
-            // guessing it would fail an order that is genuinely deliverable.
-            'phone' => ['required', 'string', 'max:30'],
+            // The number is normalised before it is validated (see
+            // `prepareForValidation`), so what reaches this rule is the one
+            // form the shop agrees on: `+212` and nine national digits.
+            //
+            // This used to be a free string of up to thirty characters,
+            // because the owner is transcribing what someone said on the phone
+            // and second-guessing it would fail a deliverable order. That was
+            // right while the number was only a thing to call back on. It is
+            // not right any more: the number is how a customer is found again,
+            // and a number that cannot be normalised would file an order under
+            // a customer nobody will ever find.
+            'phone' => ['required', 'string', 'max:30', new MoroccanPhone],
 
             'city' => ['required', 'string', Rule::in(app(ShippingZoneService::class)->names())],
             'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
+
+            // What this order costs to deliver. The panel starts from the
+            // carrier's price for the city — that is what the order is
+            // normally charged — and the owner decides what this one costs:
+            // a negotiated rate, or a free delivery.
+            //
+            // The bound is there so a mistyped figure cannot turn a
+            // 35-dirham delivery into a 35 000-dirham one.
+            'shipping_cost' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'payment_method' => [
                 'required',
                 'string',
@@ -88,12 +105,43 @@ class StoreOrderRequest extends FormRequest
         return [
             'city.in' => __('api.validation.city_unknown'),
             'payment_method.in' => __('api.validation.payment_method_unknown'),
+            // One message for every way the number can be wrong: it is the one
+            // sentence that says what a usable Moroccan number looks like.
+            'phone.*' => __('api.validation.phone'),
             'items.required' => __('api.validation.items_required'),
             'items.min' => __('api.validation.items_required'),
             'items.*.product_id.required' => __('api.validation.product_required'),
             'items.*.product_id.exists' => __('api.validation.product_unknown'),
             'items.*.quantity.required' => __('api.validation.quantity_required'),
         ];
+    }
+
+    /**
+     * The number is reduced to the one form the shop agrees on before anything
+     * else looks at it.
+     *
+     * "0612345678", "06 12 34 56 78", "+212 6 12 34 56 78" and
+     * "00212612345678" are one handset, and the customer record is keyed by
+     * that handset. Normalising here — rather than in the service that reads
+     * it — means the order, the customer and the panel all speak about the
+     * same number, and a number that is not Moroccan is refused with one
+     * clear sentence instead of being filed under a shape nobody can search.
+     */
+    protected function prepareForValidation(): void
+    {
+        $phone = trim((string) $this->input('phone'));
+
+        $this->merge([
+            'name' => trim((string) $this->input('name')),
+            'city' => trim((string) $this->input('city')),
+            'address' => trim((string) $this->input('address')),
+            'notes' => $this->input('notes') !== null
+                ? trim((string) $this->input('notes'))
+                : null,
+            // Left as typed when it cannot be normalised, so the rule below
+            // can say why it was refused.
+            'phone' => PhoneNumber::normalise($phone) ?? $phone,
+        ]);
     }
 
     /**

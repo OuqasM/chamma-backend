@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\V1\Admin\BrandController as AdminBrandController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Api\V1\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\ProductController as AdminProductController;
@@ -142,6 +143,16 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
+
+        // The customers. The list the owner opens to see who the shop sells to,
+        // the autocomplete the new-order form uses, and one customer with
+        // their orders.
+        //
+        // `search` is registered before `{customer}` so it is not swallowed by
+        // the route parameter.
+        Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/search', [AdminCustomerController::class, 'search'])->name('customers.search');
+        Route::get('/customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
 
         // Typed-in orders sit alongside the ones checkout creates, in the same
         // table and the same list. There is no separate "manual" order type.

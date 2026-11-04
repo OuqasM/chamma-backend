@@ -92,6 +92,7 @@ return [
             'notes' => 'Instructions de livraison',
             'payment_method' => 'Mode de paiement',
             'quantity' => 'Quantité',
+            'shipping_cost' => 'Frais de livraison',
             'product_id' => 'Produit',
             'variant' => 'Variante',
             'items' => 'Panier',

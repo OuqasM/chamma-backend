@@ -18,6 +18,7 @@ class Order extends Model
         'last_name',
         'customer_name',
         'phone',
+        'phone_normalised',
         'city',
         'address',
         'notes',

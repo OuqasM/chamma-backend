@@ -116,7 +116,7 @@ class WaitlistTest extends TestCase
         $this->assertDatabaseHas('waitlist_entries', [
             'product_id' => $product->id,
             'phone' => '0612345678',
-            'phone_normalised' => '+212612345678',
+            'phone_normalised' => '0612345678',
         ]);
     }
 
@@ -197,7 +197,7 @@ class WaitlistTest extends TestCase
         $this->join($product, '0612345678', 'fr', '  Amina Benali  ')->assertCreated();
 
         $this->assertDatabaseHas('waitlist_entries', [
-            'phone_normalised' => '+212612345678',
+            'phone_normalised' => '0612345678',
             'name' => 'Amina Benali',
         ]);
     }
@@ -283,7 +283,7 @@ class WaitlistTest extends TestCase
         }
 
         $this->assertDatabaseCount('waitlist_entries', 1);
-        $this->assertDatabaseHas('waitlist_entries', ['phone_normalised' => '+212612345678']);
+        $this->assertDatabaseHas('waitlist_entries', ['phone_normalised' => '0612345678']);
     }
 
     /**
@@ -366,7 +366,7 @@ class WaitlistTest extends TestCase
     public function test_a_concurrent_double_signup_merges_instead_of_erroring(): void
     {
         $product = $this->soldOutProduct();
-        $normalised = '+212612345678';
+        $normalised = '0612345678';
         $staged = false;
 
         WaitlistEntry::saving(function () use ($product, $normalised, &$staged) {
@@ -396,8 +396,10 @@ class WaitlistTest extends TestCase
         $this->assertDatabaseCount('waitlist_entries', 1);
 
         // The retry updated the winning row rather than adding a second.
+        // The phone is the canonical form, like every other number the shop
+        // holds: ten characters, the leading zero, no country code.
         $this->assertDatabaseHas('waitlist_entries', [
-            'phone' => '06 12 34 56 78',
+            'phone' => '0612345678',
             'phone_normalised' => $normalised,
         ]);
     }
@@ -906,7 +908,7 @@ class WaitlistTest extends TestCase
         $this->assertSame(1, app(WaitlistService::class)->pendingCount());
         $this->assertDatabaseHas('waitlist_entries', [
             'product_id' => $product->id,
-            'phone_normalised' => '+212612345678',
+            'phone_normalised' => '0612345678',
         ]);
     }
 
