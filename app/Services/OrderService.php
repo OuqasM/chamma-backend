@@ -169,6 +169,13 @@ class OrderService
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total' => round($subtotal + $shippingCost, 2),
+                // The parcel the courier is paid for, settled when the sale is:
+                // the price the customer was charged for the delivery is one
+                // figure and what the courier costs is another, and a delivery
+                // that was made free is paid out of the margin all the same.
+                'courier_cost' => $status === OrderStatus::Delivered
+                    ? $this->shipping->parcelCost((float) $subtotal, (string) $customer['city'])
+                    : null,
                 'status' => $status,
             ]);
 
@@ -239,6 +246,17 @@ class OrderService
             // a change anybody else needs to hear about.
             $item->unit_cost = $cost;
             $item->saveQuietly();
+        }
+
+        // The parcel too, once: the courier is paid whether or not the
+        // delivery was charged, so the price of the parcel is settled with the
+        // goods and never re-decided after that.
+        if ($order->courier_cost === null && $order->city !== null) {
+            $order->courier_cost = $this->shipping->parcelCost(
+                (float) $order->subtotal,
+                (string) $order->city,
+            );
+            $order->saveQuietly();
         }
 
         return $order->fresh('items');

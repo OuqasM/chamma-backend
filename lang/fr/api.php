@@ -18,6 +18,7 @@ return [
         'brand_in_use' => 'Impossible de supprimer cette marque : des produits y sont rattachés.\n',
         'category_in_use' => 'Impossible de supprimer cette catégorie : des produits y sont rattachés.',
         'order_closed' => 'Cette commande est déjà terminée : son statut ne peut plus être modifié.',
+        'benefit_not_settled' => 'Le bénéfice se corrige quand la commande est livrée.',
         'image_type' => 'Le fichier doit être une image (JPEG, PNG, WebP ou SVG).',
         'variant_required' => "Choisissez la variante pour :product avant d'enregistrer la commande.",
         'variant_unknown' => "La variante choisie pour :product n'existe pas.",

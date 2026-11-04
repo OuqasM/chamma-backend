@@ -172,6 +172,9 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+        // The owner corrects what an order earned by hand: the calculation
+        // answers only what it is told, and they know the rest.
+        Route::patch('/orders/{order}/benefit', [AdminOrderController::class, 'updateBenefit'])->name('orders.benefit');
 
         // Read-only. The tracker writes these rows; nothing in the panel edits
         // or deletes them, because a visitor record is data about a person

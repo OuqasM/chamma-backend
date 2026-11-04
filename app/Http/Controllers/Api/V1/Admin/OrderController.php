@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\OrderBenefitRequest;
 use App\Http\Requests\Admin\OrderStatusRequest;
 use App\Http\Requests\Admin\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
@@ -117,11 +118,17 @@ class OrderController extends Controller
     /**
      * What the filtered orders came to.
      *
-     * The **benefit** is the turnover minus what the goods cost: the order's
-     * total minus the purchase price of what is in it. It is settled when the
-     * sale happens, so it is counted over the **delivered** orders — an order
-     * that is still in flight has no benefit yet, and saying so is truer than
-     * counting a benefit that may still change.
+     * The **benefit** is the turnover minus what the goods cost minus the
+     * price of the parcel: the courier is paid whether or not the delivery
+     * was charged. An order whose benefit the owner set by hand is counted at
+     * that figure — what they set **replaces** the calculation, so their
+     * number is never a correction added to a figure it was meant to stand
+     * for.
+     *
+     * It is settled when the sale happens, so it is counted over the
+     * **delivered** orders — an order that is still in flight has no benefit
+     * yet, and saying so is truer than counting a benefit that may still
+     * change.
      *
      * The sales are counted over every order in the filter: those are the
      * orders the shop took, whether or not they have been delivered.
@@ -140,13 +147,24 @@ class OrderController extends Controller
             ->join('order_items', 'order_items.order_id', '=', 'orders.id')
             ->sum(DB::raw('order_items.unit_cost * order_items.quantity'));
 
+        // What each delivered order earned, as the panel states it: the figure
+        // the owner set where one is set, the arithmetic where it is not —
+        // which is why the goods are read per order here, down the rows,
+        // rather than summed across them.
+        $benefit = (float) (clone $settled)->sum(
+            DB::raw('COALESCE(benefit_override, orders.total - COALESCE(courier_cost, 0) - (
+                SELECT COALESCE(SUM(items.unit_cost * items.quantity), 0)
+                FROM order_items AS items WHERE items.order_id = orders.id
+            ))'),
+        );
+
         return [
             'orders' => $orders,
             'total_sales' => round($sales, 2),
             'settled_orders' => $settledCount,
             'settled_sales' => round($settledSales, 2),
             'total_cost' => round($cost, 2),
-            'total_benefit' => round($settledSales - $cost, 2),
+            'total_benefit' => round($benefit, 2),
         ];
     }
 
@@ -316,5 +334,32 @@ class OrderController extends Controller
         }
 
         return response()->json(['order' => new OrderResource($order->fresh('items'))]);
+    }
+
+    /**
+     * The owner corrects what an order earned.
+     *
+     * The calculation answers what it is told — the total, the goods, the
+     * parcel — and what it is never told is the rate the supplier actually
+     * gave, the courier that charged more than the shop billed, the bottle
+     * that broke in the box and was given to the customer anyway. The owner
+     * knows; so the figure is theirs to put in.
+     *
+     * A set figure **replaces** the calculation rather than bending it, and a
+     * figure taken away gives the calculation back. Only a delivered order
+     * has a benefit to correct: the sale has not happened yet, and a benefit
+     * would be a guess about a future.
+     */
+    public function updateBenefit(OrderBenefitRequest $request, Order $order): JsonResponse
+    {
+        if ($order->status !== OrderStatus::Delivered) {
+            return response()->json([
+                'message' => __('api.errors.benefit_not_settled'),
+            ], 422);
+        }
+
+        $order->update(['benefit_override' => $request->figure()]);
+
+        return response()->json(['order' => new OrderResource($order->load('items'))]);
     }
 }

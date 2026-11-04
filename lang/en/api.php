@@ -18,6 +18,7 @@ return [
         'brand_in_use' => 'This brand cannot be deleted: products are still attached to it.',
         'category_in_use' => 'This category cannot be deleted: products are still attached to it.',
         'order_closed' => 'This order is already closed: its status can no longer be changed.',
+        'benefit_not_settled' => 'The benefit can be corrected once the order is delivered.',
         'image_type' => 'The file must be an image (JPEG, PNG, WebP or SVG).',
         'variant_required' => "Choose a variant for :product before recording the order.",
         'variant_unknown' => "The variant chosen for :product does not exist.",

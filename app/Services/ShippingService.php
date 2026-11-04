@@ -26,6 +26,20 @@ class ShippingService
             return 0.0;
         }
 
+        return $this->parcelCost($subtotal, $city);
+    }
+
+    /**
+     * What the parcel costs the shop, whatever the customer is charged.
+     *
+     * The free-shipping promotion decides what the *customer* pays; the
+     * courier is paid for the parcel all the same. This is the figure an
+     * order's benefit is settled against — a delivery that was made free to
+     * the customer is still an expense of the sale, and the benefit reads the
+     * truth: the total minus the goods minus the parcel.
+     */
+    public function parcelCost(float $subtotal, string $city): float
+    {
         // What the shop charges for this city, when the owner has priced it
         // for themselves. The carrier's table says what the courier charges;
         // the shop may charge something else, and that is the figure the

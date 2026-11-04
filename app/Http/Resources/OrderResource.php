@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\PaymentService;
 use App\Support\PhoneNumber;
@@ -64,11 +65,19 @@ class OrderResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'shipping_cost' => (float) $this->shipping_cost,
             'total' => (float) $this->total,
-            // What the goods cost the shop, and what the order earned: the
-            // total minus the purchase price of what is in it. Read from the
-            // line's own snapshot, so it is the benefit the order had when it
-            // was placed.
+            // What the goods cost the shop, what the courier is paid for the
+            // parcel — a cost of the sale whether or not the delivery was
+            // charged — and what the order earned: the total minus the goods
+            // minus the parcel. Read from the line's own snapshot, so it is
+            // the benefit the order had when it was placed. A benefit the
+            // owner set by hand replaces the calculation, which the panel
+            // has to be able to say: it shows it as their figure, and offers
+            // the way back.
             'cost' => $this->cost,
+            'courier_cost' => $this->status === OrderStatus::Delivered
+                ? (float) ($this->courier_cost ?? 0)
+                : $this->courier_cost,
+            'benefit_override' => $this->benefit_override,
             'benefit' => $this->benefit,
             'currency' => config('chamma.currency.code'),
 
