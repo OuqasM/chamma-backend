@@ -78,6 +78,17 @@ class StoreOrderRequest extends FormRequest
             // delivery for one order is not a decision about the whole city,
             // so the panel says which of the two it means.
             'remember_fee' => ['nullable', 'boolean'],
+
+            // The stock decisions the owner made while writing the order: this
+            // bottle has just sold out, or this size is discontinued for good.
+            //
+            // They travel with the order and are applied **when it is saved**,
+            // not when they are clicked: an order the owner abandons must not
+            // leave the shop's stock changed.
+            'stock_actions' => ['nullable', 'array', 'max:20'],
+            'stock_actions.*.type' => ['required', 'string', 'in:out_of_stock,remove_variant'],
+            'stock_actions.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'stock_actions.*.variant' => ['nullable', 'string', 'max:120'],
             'payment_method' => [
                 'required',
                 'string',

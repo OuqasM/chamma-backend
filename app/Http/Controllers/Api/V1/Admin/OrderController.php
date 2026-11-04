@@ -8,6 +8,8 @@ use App\Http\Requests\Admin\OrderStatusRequest;
 use App\Http\Requests\Admin\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\Product;
+use App\Services\CatalogService;
 use App\Services\OrderService;
 use App\Services\ShippingFeeService;
 use App\Support\PhoneNumber;
@@ -180,13 +182,22 @@ class OrderController extends Controller
             : null;
 
         try {
-            $order = $orders->place(
-                $data['items'],
-                $data,
-                $data['locale'] ?? (string) App::getLocale(),
-                OrderStatus::Delivered,
-                $shippingCost,
-            );
+            // The order and the stock decisions the owner made while writing
+            // it are written together: an order the owner abandons must not
+            // leave the shop's stock changed.
+            $order = DB::transaction(function () use ($data, $orders, $shippingCost) {
+                $order = $orders->place(
+                    $data['items'],
+                    $data,
+                    $data['locale'] ?? (string) App::getLocale(),
+                    OrderStatus::Delivered,
+                    $shippingCost,
+                );
+
+                $this->applyStockActions($data['stock_actions'] ?? []);
+
+                return $order;
+            });
         } catch (\DomainException $e) {
             // Sold out, deactivated, or no longer enough stock: a fact about
             // the catalogue that the owner needs to read, not a crash.
@@ -219,6 +230,51 @@ class OrderController extends Controller
         }
 
         return response()->json(['order' => new OrderResource($order->fresh('items'))], 201);
+    }
+
+    /**
+     * The stock decisions the owner made while writing the order.
+     *
+     * A bottle that has just sold out, or a size that is discontinued for
+     * good. They are applied with the order rather than when they were
+     * clicked, so an abandoned order leaves the shop's stock alone.
+     *
+     * Best effort: a size that is not there any more, or a product that has
+     * been deleted since, is skipped rather than failing the order the owner
+     * is trying to write.
+     */
+    private function applyStockActions(array $actions): void
+    {
+        if ($actions === []) {
+            return;
+        }
+
+        foreach ($actions as $action) {
+            $product = Product::query()->find($action['product_id'] ?? 0);
+
+            if (! $product) {
+                continue;
+            }
+
+            if (($action['type'] ?? '') === 'out_of_stock') {
+                $product->update(['is_available' => false]);
+
+                continue;
+            }
+
+            if (($action['type'] ?? '') === 'remove_variant') {
+                $name = trim((string) ($action['variant'] ?? ''));
+
+                if ($name !== '') {
+                    $product->variants()->where('name', $name)->delete();
+                }
+            }
+        }
+
+        // The storefront's listings read the availability flag, so they have to
+        // be flushed: a bottle that has just sold out must not keep being
+        // offered.
+        app(CatalogService::class)->flushListings();
     }
 
     public function show(Order $order): JsonResponse
