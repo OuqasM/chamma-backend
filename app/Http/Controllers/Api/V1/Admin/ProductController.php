@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Concerns\HasSingleName;
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProductRequest;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductTranslation;
 use App\Services\CatalogService;
@@ -107,10 +109,73 @@ class ProductController extends Controller
         });
 
         $this->announceRestock($product, $wasAvailable);
+        $this->settleTheOrdersContaining($product);
         $this->flushStorefrontCaches();
 
         return response()->json([
             'product' => new AdminProductResource($product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])),
+        ]);
+    }
+
+    /**
+     * The benefit of the delivered orders that contain this product follows
+     * its purchase price.
+     *
+     * The cost of an order is settled when the sale happens, and the owner
+     * rectifies a purchase price afterwards often enough — a supplier's
+     * invoice, a price they had from memory — that the benefit they read on
+     * the order has to follow the correction rather than keep the figure the
+     * product had that day.
+     *
+     * Only the settled orders are touched: an order that has not been
+     * delivered is settled when it is, and it reads the price as it stands
+     * then.
+     */
+    private function settleTheOrdersContaining(Product $product): void
+    {
+        $orders = Order::query()
+            ->where('status', OrderStatus::Delivered)
+            ->whereHas('items', fn ($q) => $q->where('product_id', $product->id))
+            ->pluck('id');
+
+        if ($orders->isEmpty()) {
+            return;
+        }
+
+        DB::table('order_items')
+            ->whereIn('order_id', $orders)
+            ->where('product_id', $product->id)
+            ->update(['unit_cost' => (float) $product->cost_price]);
+    }
+
+    /**
+     * Take a size off the list for good.
+     *
+     * A discontinued 100 ml is not a size the owner wants to keep choosing on
+     * every order. Removing it here does not touch the orders that named it:
+     * the line keeps the name it was written with, which is what the history
+     * means.
+     *
+     * The size is named rather than numbered: an order remembers the name it
+     * was sold under, not the row it came from, and the name is unique within
+     * the product.
+     */
+    public function destroyVariant(Product $product, string $variant): JsonResponse
+    {
+        $model = $product->variants()->where('name', trim($variant))->first();
+
+        if (! $model) {
+            return response()->json(['message' => __('api.errors.not_found')], 404);
+        }
+
+        $model->delete();
+
+        $this->flushStorefrontCaches();
+
+        return response()->json([
+            'product' => new AdminProductResource(
+                $product->fresh(['translations', 'images', 'brand', 'categories', 'variants'])
+            ),
         ]);
     }
 
@@ -149,11 +214,22 @@ class ProductController extends Controller
      * The other half of the pair: the product stays on the shelf, it is just
      * labelled out of stock until it is switched back.
      */
-    public function toggleAvailability(Product $product): JsonResponse
+    /**
+     * Out of stock, or back in it.
+     *
+     * Without a body it flips: the products list has a button that says
+     * which way it will go. With one it sets the state — "mark this out of
+     * stock" says what it means, and says it the same way twice.
+     */
+    public function toggleAvailability(Product $product, Request $request): JsonResponse
     {
         $wasAvailable = $product->in_stock;
 
-        $product->update(['is_available' => ! $product->is_available]);
+        $available = $request->has('available')
+            ? (bool) $request->boolean('available')
+            : ! $product->is_available;
+
+        $product->update(['is_available' => $available]);
 
         $this->announceRestock($product, $wasAvailable);
         $this->flushStorefrontCaches();

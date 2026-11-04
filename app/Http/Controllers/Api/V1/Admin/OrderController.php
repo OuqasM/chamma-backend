@@ -116,24 +116,35 @@ class OrderController extends Controller
      * What the filtered orders came to.
      *
      * The **benefit** is the turnover minus what the goods cost: the order's
-     * total minus the purchase price of what is in it, read from the line's
-     * own snapshot rather than from the catalogue — so the benefit of an
-     * order is the benefit it had when it was placed.
+     * total minus the purchase price of what is in it. It is settled when the
+     * sale happens, so it is counted over the **delivered** orders — an order
+     * that is still in flight has no benefit yet, and saying so is truer than
+     * counting a benefit that may still change.
+     *
+     * The sales are counted over every order in the filter: those are the
+     * orders the shop took, whether or not they have been delivered.
      */
     private function summary(Builder $query): array
     {
         $orders = (clone $query)->count();
         $sales = (float) (clone $query)->sum('total');
 
-        $cost = (float) (clone $query)
+        $settled = (clone $query)->where('status', OrderStatus::Delivered);
+
+        $settledCount = (clone $settled)->count();
+        $settledSales = (float) (clone $settled)->sum('total');
+
+        $cost = (float) (clone $settled)
             ->join('order_items', 'order_items.order_id', '=', 'orders.id')
             ->sum(DB::raw('order_items.unit_cost * order_items.quantity'));
 
         return [
             'orders' => $orders,
             'total_sales' => round($sales, 2),
+            'settled_orders' => $settledCount,
+            'settled_sales' => round($settledSales, 2),
             'total_cost' => round($cost, 2),
-            'total_benefit' => round($sales - $cost, 2),
+            'total_benefit' => round($settledSales - $cost, 2),
         ];
     }
 
@@ -215,7 +226,7 @@ class OrderController extends Controller
         return response()->json(['order' => new OrderResource($order->load('items'))]);
     }
 
-    public function updateStatus(OrderStatusRequest $request, Order $order): JsonResponse
+    public function updateStatus(OrderStatusRequest $request, Order $order, OrderService $orders): JsonResponse
     {
         $status = OrderStatus::from($request->validated()['status']);
 
@@ -234,6 +245,14 @@ class OrderController extends Controller
         // Delivered orders are collected on delivery.
         if ($order->status === OrderStatus::Delivered && $order->payment_status === 'pending') {
             $order->update(['payment_status' => 'paid']);
+        }
+
+        // **The sale happens here**, so the cost of the goods is settled here:
+        // what the order earned is what the goods cost at the moment they
+        // were sold. An order the owner wrote in the panel was settled when it
+        // was created — it was delivered from the start.
+        if ($order->status === OrderStatus::Delivered) {
+            $order = $orders->settleCost($order);
         }
 
         if ($order->status === OrderStatus::Cancelled && $order->payment_status === 'paid') {

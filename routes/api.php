@@ -132,6 +132,11 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
         Route::patch('/products/{product}/toggle', [AdminProductController::class, 'toggle'])->name('products.toggle');
         Route::patch('/products/{product}/availability', [AdminProductController::class, 'toggleAvailability'])->name('products.availability');
+        // Taking a size off the list for good. The size is named rather than
+        // numbered: an order remembers the name it was sold under.
+        Route::delete('/products/{product}/variants/{variant}', [AdminProductController::class, 'destroyVariant'])
+            ->where('variant', '.*')
+            ->name('products.variants.destroy');
         Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/restore', [AdminProductController::class, 'restore'])->name('products.restore');
 

@@ -117,6 +117,67 @@ class AdminSalesFiguresTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('cost_price');
     }
 
+    /**
+     * The benefit is settled when the sale happens.
+     *
+     * An order the owner writes in the panel is delivered from the start, so
+     * it has its benefit at once. A website order has none until it is
+     * delivered: the goods have not been sold yet, and saying so is truer
+     * than a figure that may still change.
+     */
+    public function test_a_website_order_has_no_benefit_until_it_is_delivered(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $reference = $this->postJson('/api/fr/checkout', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 rue Ibn Batouta',
+            'payment_method' => 'cod',
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ])->assertCreated()->json('order.reference');
+
+        $order = Order::query()->where('reference', $reference)->firstOrFail();
+        $this->assertNull($order->benefit, 'an order that has not been delivered has no benefit yet');
+
+        // And the panel says so rather than showing a zero.
+        $this->getJson('/api/admin/orders')->assertOk()->assertJsonPath('data.0.benefit', null);
+
+        // Moving it to delivered settles it.
+        $this->patchJson('/api/admin/orders/'.$order->id.'/status', ['status' => 'delivered'])
+            ->assertOk()
+            ->assertJsonPath('order.benefit', 425);
+
+        // 890 of goods, 35 of delivery, 500 of goods: the benefit is 425.
+        $this->assertSame(425.0, (float) $order->fresh('items')->benefit);
+    }
+
+    /**
+     * The owner rectifies a purchase price, and the benefit of the orders
+     * that contain the product follows the correction.
+     */
+    public function test_rectifying_a_purchase_price_rectifies_the_benefit(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $this->postJson('/api/admin/orders', $this->payload($product))->assertCreated();
+
+        $order = Order::query()->firstOrFail();
+        $this->assertSame(815.0, (float) $order->fresh('items')->benefit);
+
+        // The owner corrects the purchase price.
+        $this->putJson('/api/admin/products/'.$product->id, [
+            'name' => 'Oud Royale',
+            'price' => 890,
+            'cost_price' => 600,
+            'stock' => 10,
+        ])->assertOk();
+
+        // And the benefit follows: 1815 of turnover, 1200 of goods.
+        $this->assertSame(615.0, (float) $order->fresh('items')->benefit);
+    }
+
     // ---------------------------------------------------------------
     // The figures over a filtered set
     // ---------------------------------------------------------------

@@ -210,6 +210,41 @@ class OrderService
     }
 
     /**
+     * Settles what the goods in an order cost.
+     *
+     * The cost of an order is settled when the sale happens: an order the
+     * owner writes in the panel is settled when it is created, and a website
+     * order when it is moved to delivered. It is also settled again when the
+     * owner rectifies a product's purchase price — the benefit of the orders
+     * that contain the product follows the correction.
+     *
+     * The figure is written on the line, so it is a record of what the goods
+     * cost when the sale happened rather than a reading of the catalogue that
+     * changes under the owner's feet.
+     */
+    public function settleCost(Order $order): Order
+    {
+        $costs = Product::query()
+            ->whereIn('id', $order->items->pluck('product_id')->filter()->unique())
+            ->pluck('cost_price', 'id');
+
+        foreach ($order->items as $item) {
+            $cost = $costs[$item->product_id] ?? null;
+
+            if ($cost === null || (float) $item->unit_cost === (float) $cost) {
+                continue;
+            }
+
+            // Quietly: the line is a snapshot, and re-reading its cost is not
+            // a change anybody else needs to hear about.
+            $item->unit_cost = $cost;
+            $item->saveQuietly();
+        }
+
+        return $order->fresh('items');
+    }
+
+    /**
      * Human friendly, non guessable order reference: CP-2609-4821.
      */
     public function reference(): string
