@@ -410,6 +410,34 @@ class AdminSalesFiguresTest extends TestCase
         $this->patchJson('/api/admin/orders/'.$id.'/benefit', ['benefit' => 900])->assertForbidden();
     }
 
+    /**
+     * The price of a city is kept in the table of delivery fees — one row per
+     * city — and not as a stray setting: it is what the customer is charged,
+     * what the courier is paid, and what the benefit is settled against.
+     */
+    public function test_a_rectified_fee_is_kept_in_the_table_of_delivery_fees(): void
+    {
+        $product = $this->product();
+
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'shipping_cost' => 20,
+        ]))->assertCreated()->assertJsonPath('order.shipping_cost', 20);
+
+        $this->assertDatabaseHas('delivery_fees', ['city' => 'CASABLANCA', 'fee' => 20]);
+
+        // And a free delivery for one order does not price the city.
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'phone' => '0612345679',
+            'shipping_cost' => 0,
+            'remember_fee' => false,
+        ]))->assertCreated()->assertJsonPath('order.shipping_cost', 0);
+
+        $this->assertDatabaseHas('delivery_fees', ['city' => 'CASABLANCA', 'fee' => 20]);
+
+        // The price lives in one place.
+        $this->assertDatabaseMissing('settings', ['key' => 'shipping_fee.CASABLANCA']);
+    }
+
     // ---------------------------------------------------------------
     // The figures over a filtered set
     // ---------------------------------------------------------------

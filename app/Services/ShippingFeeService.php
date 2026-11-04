@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Setting;
+use App\Models\DeliveryFee;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -18,17 +18,15 @@ use Illuminate\Support\Facades\Cache;
  * and it is what every later order to that city is billed at, on the
  * storefront as much as in the panel.
  *
- * The overrides live in the settings table rather than in a table of their
- * own: there are a handful of them, they are read on the checkout path, and
- * the settings are already cached and already forgotten on a write.
+ * The prices live in a table of their own — one row per city — because they
+ * are a fact about the shop rather than a stray setting: they are what the
+ * customer is charged, what the courier is paid, and what the benefit of
+ * every order to that city is settled against. There are a handful of them,
+ * they are read on the checkout path, and the list is cached and forgotten on
+ * a write.
  */
 class ShippingFeeService
 {
-    /**
-     * The prefix of the setting key a city's price is kept under.
-     */
-    private const PREFIX = 'shipping_fee.';
-
     /**
      * How long a cached block of overrides is good for. Short enough that a
      * change the owner makes takes effect at once, long enough that a
@@ -60,17 +58,13 @@ class ShippingFeeService
     public function overrides(): array
     {
         return Cache::remember('store.shipping_fees', self::TTL, function () {
-            $overrides = [];
+            $fees = [];
 
-            foreach (Setting::query()->where('key', 'like', self::PREFIX.'%')->pluck('value', 'key') as $key => $value) {
-                if ($value === null || $value === '') {
-                    continue;
-                }
-
-                $overrides[substr((string) $key, strlen(self::PREFIX))] = (float) $value;
+            foreach (DeliveryFee::query()->get() as $fee) {
+                $fees[$fee->city] = (float) $fee->fee;
             }
 
-            return $overrides;
+            return $fees;
         });
     }
 
@@ -88,9 +82,9 @@ class ShippingFeeService
             return;
         }
 
-        Setting::query()->updateOrCreate(
-            ['key' => self::PREFIX.$city],
-            ['value' => (string) round($fee, 2)],
+        DeliveryFee::query()->updateOrCreate(
+            ['city' => $city],
+            ['fee' => round($fee, 2)],
         );
 
         $this->flush();
@@ -101,7 +95,7 @@ class ShippingFeeService
      */
     public function forget(string $city): void
     {
-        Setting::query()->where('key', self::PREFIX.trim($city))->delete();
+        DeliveryFee::query()->where('city', trim($city))->delete();
 
         $this->flush();
     }
