@@ -43,6 +43,8 @@ class AdminOrderCreationTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => $name,
             'price' => $price,
+            'cost_price' => max(0, (int) ($price * 0.6)),
+            'cost_price' => max(0, (int) ($price * 0.6)),
             'stock' => $stock,
         ])->assertCreated();
 
@@ -59,6 +61,8 @@ class AdminOrderCreationTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => $name,
             'price' => $price,
+            'cost_price' => max(0, (int) ($price * 0.6)),
+            'cost_price' => max(0, (int) ($price * 0.6)),
             'stock' => $stock,
             'has_variants' => true,
             'variants' => [['name' => '50 ml'], ['name' => '100 ml']],

@@ -122,6 +122,8 @@ class ShippingPricingTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => 'Oud Royale',
             'price' => 100,
+            'cost_price' => 60,
+            'cost_price' => 60,
             'stock' => 100,
         ])->assertCreated();
 

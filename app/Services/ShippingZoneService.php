@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
  */
 class ShippingZoneService
 {
+    public function __construct(private readonly ShippingFeeService $fees) {}
+
     /**
      * Normalised city name => zone. Built once per request.
      *
@@ -117,10 +119,21 @@ class ShippingZoneService
      */
     public function options(string $locale): array
     {
+        // What the shop charges for the city, which is the carrier's price
+        // unless the owner has priced that city for themselves. The list and
+        // the quote have to agree: a shopper who is told 35 and charged 50
+        // has been told two different things.
+        $overrides = $this->fees->overrides();
+
         return array_map(fn (array $zone) => [
             'value' => $zone['name'],
             'label' => $this->label($zone['name'], $locale),
-            'fee' => $zone['fee'],
+            'fee' => $overrides[$zone['name']] ?? $zone['fee'],
+            // Whether the price is the shop's own rather than the carrier's.
+            // The panel needs to know: it is the difference between "this
+            // city costs what the courier charges" and "this city costs what
+            // you decided", and only the second can be put back.
+            'overridden' => isset($overrides[$zone['name']]),
             'delay' => $zone['delay'],
         ], $this->all());
     }

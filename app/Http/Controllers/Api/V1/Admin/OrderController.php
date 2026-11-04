@@ -9,11 +9,15 @@ use App\Http\Requests\Admin\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Services\ShippingFeeService;
 use App\Support\PhoneNumber;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -29,37 +33,21 @@ class OrderController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Order::query()->with('items')->latest();
+        $validated = $request->validate([
+            'status' => ['nullable', 'string'],
+            'search' => ['nullable', 'string', 'max:120'],
+            // The window the owner is looking at. A date on its own means the
+            // whole of that day: "from the 1st" is the 1st, not midnight on
+            // the 1st with every order of the morning missing.
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
 
-        if ($status = $request->query('status')) {
-            if (in_array($status, OrderStatus::values(), true)) {
-                $query->where('status', $status);
-            }
-        }
+        $query = $this->filtered($validated)->with('items')->latest();
 
-        if ($search = trim((string) $request->query('search'))) {
-            $like = '%'.$search.'%';
+        $page = $query->paginate((int) config('chamma.catalog.admin_per_page'))->withQueryString();
 
-            // The number is compared the way it is written and the way it is
-            // normally written. An order recorded in the panel carries the
-            // canonical form ("+212612345678"), so a search typed the way
-            // people say it ("0612345678") has to be reduced the same way
-            // before it is compared — otherwise the owner would type a number
-            // they know and be told they have no orders.
-            $national = PhoneNumber::nationalDigits($search);
-
-            $query->where(fn ($q) => $q
-                ->where('reference', 'like', $like)
-                ->orWhere('customer_name', 'like', $like)
-                ->orWhere('phone', 'like', $like)
-                ->orWhere('city', 'like', $like)
-                ->when($national !== null, fn ($q) => $q->orWhere('phone', 'like', '%'.$national.'%'))
-            );
-        }
-
-        return OrderResource::collection(
-            $query->paginate((int) config('chamma.catalog.admin_per_page'))->withQueryString()
-        )->additional([
+        return OrderResource::collection($page)->additional([
             'meta' => [
                 'statuses' => collect(OrderStatus::cases())->map(fn (OrderStatus $s) => [
                     'value' => $s->value,
@@ -70,7 +58,83 @@ class OrderController extends Controller
                     fn (OrderStatus $s) => [$s->value => Order::query()->where('status', $s->value)->count()]
                 ),
             ],
+            // What the filtered orders came to. Over the whole filtered set
+            // and not just this page: the owner is asking what the shop took
+            // and what it earned, and a page of twenty would answer a
+            // different question.
+            'summary' => $this->summary($this->filtered($validated)),
         ]);
+    }
+
+    /**
+     * The orders the request is asking for.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    private function filtered(array $filters): Builder
+    {
+        $query = Order::query();
+
+        if ($status = $filters['status'] ?? null) {
+            if (in_array($status, OrderStatus::values(), true)) {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($search = trim((string) ($filters['search'] ?? ''))) {
+            $like = '%'.$search.'%';
+
+            // The number is compared the way it is written and the way it is
+            // normally written. An order recorded in the panel carries the
+            // canonical form ("0612345678"), so a search typed the way people
+            // say it ("612345678", or even "0612") has to be reduced the same
+            // way before it is compared — otherwise the owner would type a
+            // number they know and be told they have no orders.
+            $digits = PhoneNumber::searchDigits($search);
+
+            $query->where(fn ($q) => $q
+                ->where('reference', 'like', $like)
+                ->orWhere('customer_name', 'like', $like)
+                ->orWhere('phone', 'like', $like)
+                ->orWhere('city', 'like', $like)
+                ->when($digits !== [], fn ($q) => $q->orWhere('phone', 'like', '%'.$digits[0].'%'))
+            );
+        }
+
+        if ($start = $filters['start_date'] ?? null) {
+            $query->whereDate('created_at', '>=', Carbon::parse($start)->startOfDay());
+        }
+
+        if ($end = $filters['end_date'] ?? null) {
+            $query->whereDate('created_at', '<=', Carbon::parse($end)->endOfDay());
+        }
+
+        return $query;
+    }
+
+    /**
+     * What the filtered orders came to.
+     *
+     * The **benefit** is the turnover minus what the goods cost: the order's
+     * total minus the purchase price of what is in it, read from the line's
+     * own snapshot rather than from the catalogue — so the benefit of an
+     * order is the benefit it had when it was placed.
+     */
+    private function summary(Builder $query): array
+    {
+        $orders = (clone $query)->count();
+        $sales = (float) (clone $query)->sum('total');
+
+        $cost = (float) (clone $query)
+            ->join('order_items', 'order_items.order_id', '=', 'orders.id')
+            ->sum(DB::raw('order_items.unit_cost * order_items.quantity'));
+
+        return [
+            'orders' => $orders,
+            'total_sales' => round($sales, 2),
+            'total_cost' => round($cost, 2),
+            'total_benefit' => round($sales - $cost, 2),
+        ];
     }
 
     /**
@@ -96,19 +160,21 @@ class OrderController extends Controller
         // it touches, so what is typed into the panel cannot set its own totals
         // and cannot oversell stock. The request is trusted for who the customer
         // is, and for nothing about what things cost or whether they are there.
+        // What the owner decided the delivery costs. Null means "the carrier's
+        // price for the city", which is what the panel fills in; a number
+        // means the owner has decided otherwise — a negotiated rate, or a free
+        // delivery.
+        $shippingCost = array_key_exists('shipping_cost', $data) && $data['shipping_cost'] !== null
+            ? (float) $data['shipping_cost']
+            : null;
+
         try {
             $order = $orders->place(
                 $data['items'],
                 $data,
                 $data['locale'] ?? (string) App::getLocale(),
                 OrderStatus::Delivered,
-                // What the owner is charging for the delivery. Null means "the
-                // carrier's price for the city", which is what the panel
-                // fills in; a number means the owner has decided otherwise —
-                // a negotiated rate, or a free delivery.
-                array_key_exists('shipping_cost', $data) && $data['shipping_cost'] !== null
-                    ? (float) $data['shipping_cost']
-                    : null,
+                $shippingCost,
             );
         } catch (\DomainException $e) {
             // Sold out, deactivated, or no longer enough stock: a fact about
@@ -129,6 +195,17 @@ class OrderController extends Controller
         $order->update([
             'payment_status' => ($data['payment_status'] ?? 'paid') === 'pending' ? 'pending' : 'paid',
         ]);
+
+        // **The fee is kept for that city.** The owner priced the delivery
+        // for Casablanca, so the next order to Casablanca is billed the same
+        // way — and so is the storefront, which has to quote the same price
+        // the panel charges.
+        //
+        // Only when they asked for it: a free delivery for one order is not
+        // a decision about the whole city, and the panel says so.
+        if ($shippingCost !== null && ($data['remember_fee'] ?? true) && ! empty($data['city'])) {
+            app(ShippingFeeService::class)->set((string) $data['city'], $shippingCost);
+        }
 
         return response()->json(['order' => new OrderResource($order->fresh('items'))], 201);
     }

@@ -137,6 +137,15 @@ class StoreCatalogSeeder extends Seeder
                 ],
             );
 
+            // The purchase price is given only to a product the seeder has
+            // just created. The owner's own figure is theirs: the seeder runs
+            // on every boot, and writing the catalogue's cost price over it
+            // would undo their work every time the container restarted.
+            if ($product->wasRecentlyCreated) {
+                $product->cost_price = round($record['price'] * 0.6, 2);
+                $product->save();
+            }
+
             // Categories live on the pivot now. The sample data names a single
             // one per product, so this attaches exactly that.
             $categoryId = $categories->get($record['category'])?->id;

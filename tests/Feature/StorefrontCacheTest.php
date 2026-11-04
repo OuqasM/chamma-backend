@@ -56,6 +56,8 @@ class StorefrontCacheTest extends TestCase
         $response = $this->postJson('/api/admin/products', array_merge([
             'name' => $name,
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => 10,
         ], $overrides));
 

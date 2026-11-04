@@ -12,7 +12,10 @@ namespace App\Services;
  */
 class ShippingService
 {
-    public function __construct(private readonly ShippingZoneService $zones) {}
+    public function __construct(
+        private readonly ShippingZoneService $zones,
+        private readonly ShippingFeeService $fees,
+    ) {}
 
     public function cost(float $subtotal, string $city): float
     {
@@ -21,6 +24,16 @@ class ShippingService
         // basket free instead.
         if ($this->isFree($subtotal)) {
             return 0.0;
+        }
+
+        // What the shop charges for this city, when the owner has priced it
+        // for themselves. The carrier's table says what the courier charges;
+        // the shop may charge something else, and that is the figure the
+        // owner set.
+        $override = $this->fees->for($city);
+
+        if ($override !== null) {
+            return round($override, 2);
         }
 
         $config = config('chamma.shipping');

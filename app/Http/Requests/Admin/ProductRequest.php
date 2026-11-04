@@ -37,7 +37,12 @@ class ProductRequest extends FormRequest
             'price' => ['required', 'numeric', 'min:0', 'max:999999'],
             // What the shop pays for the unit. Internal only: never exposed by
             // the storefront resource.
-            'cost_price' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            //
+            // **Required**, because the benefit of an order is its total minus
+            // the purchase price of what is in it — a product without one has
+            // no benefit to speak of, and a shop that cannot say what it earns
+            // is trading blind.
+            'cost_price' => ['required', 'numeric', 'min:0', 'max:999999'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'gt:price', 'max:999999'],
             'stock' => ['required', 'integer', 'min:0', 'max:100000'],
             'size' => ['nullable', 'string', 'max:60'],

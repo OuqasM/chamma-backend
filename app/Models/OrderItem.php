@@ -24,12 +24,18 @@ class OrderItem extends Model
         'product_image',
         'locale',
         'unit_price',
+        // What the shop paid for the unit when the order was placed. A
+        // snapshot like the selling price: the benefit of an order is its
+        // total minus what the goods cost, and that has to stay true after
+        // the catalogue is repriced.
+        'unit_cost',
         'quantity',
         'subtotal',
     ];
 
     protected $casts = [
         'unit_price' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'quantity' => 'integer',
     ];

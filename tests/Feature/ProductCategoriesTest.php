@@ -46,6 +46,8 @@ class ProductCategoriesTest extends TestCase
         $response = $this->postJson('/api/admin/products', array_merge([
             'name' => 'Ambre Nocturne',
             'price' => 750,
+            'cost_price' => 450,
+            'cost_price' => 450,
             'stock' => 4,
         ], $overrides));
 
@@ -78,6 +80,7 @@ class ProductCategoriesTest extends TestCase
 
         $this->putJson('/api/admin/products/'.$product->id, [
             'name' => 'Ambre Nocturne',
+            'cost_price' => 450,
             'price' => 750,
             'stock' => 4,
             'category_ids' => [1, 2],
@@ -97,6 +100,7 @@ class ProductCategoriesTest extends TestCase
 
         $this->putJson('/api/admin/products/'.$product->id, [
             'name' => 'Ambre Nocturne',
+            'cost_price' => 450,
             'price' => 750,
             'stock' => 4,
             'category_ids' => [$vanille->id],
@@ -191,6 +195,7 @@ class ProductCategoriesTest extends TestCase
         // key at all, and must not be able to wipe the assignments.
         $this->putJson('/api/admin/products/'.$product->id, [
             'name' => 'Ambre Nocturne',
+            'cost_price' => 450,
             'price' => 800,
             'stock' => 4,
         ])->assertOk();
@@ -206,6 +211,8 @@ class ProductCategoriesTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => 'Ambre Nocturne',
             'price' => 750,
+            'cost_price' => 450,
+            'cost_price' => 450,
             'stock' => 4,
             'category_ids' => [999],
         ])->assertStatus(422)->assertJsonValidationErrors('category_ids.0');
@@ -219,6 +226,8 @@ class ProductCategoriesTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => 'Ambre Nocturne',
             'price' => 750,
+            'cost_price' => 450,
+            'cost_price' => 450,
             'stock' => 4,
             'category_ids' => [1, 1],
         ])->assertStatus(422)->assertJsonValidationErrors('category_ids.1');

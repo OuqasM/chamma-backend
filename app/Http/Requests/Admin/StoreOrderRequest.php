@@ -71,6 +71,13 @@ class StoreOrderRequest extends FormRequest
             // The bound is there so a mistyped figure cannot turn a
             // 35-dirham delivery into a 35 000-dirham one.
             'shipping_cost' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+
+            // Whether the figure is **kept for that city**. A price the owner
+            // sets for Casablanca is the price of delivering to Casablanca,
+            // and the next order there is billed the same way. A free
+            // delivery for one order is not a decision about the whole city,
+            // so the panel says which of the two it means.
+            'remember_fee' => ['nullable', 'boolean'],
             'payment_method' => [
                 'required',
                 'string',

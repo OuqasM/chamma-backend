@@ -36,6 +36,8 @@ class ProductDescriptionTest extends TestCase
         $response = $this->postJson('/api/admin/products', array_merge([
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => 10,
         ], $overrides));
 
@@ -103,6 +105,7 @@ class ProductDescriptionTest extends TestCase
         $this->putJson("/api/admin/products/{$product->id}", [
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
             'stock' => 10,
             'descriptions' => ['fr' => 'Version corrigée.'],
         ])->assertOk();
@@ -123,6 +126,8 @@ class ProductDescriptionTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => 10,
             'descriptions' => ['fr' => 'Un oud.', 'de' => 'Ein Oud.'],
         ])->assertCreated();
@@ -159,6 +164,7 @@ class ProductDescriptionTest extends TestCase
         $this->putJson("/api/admin/products/{$product->id}", [
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
             'stock' => 10,
             'description' => '',
         ])->assertOk();

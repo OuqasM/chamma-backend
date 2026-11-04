@@ -128,6 +128,11 @@ class OrderService
                     'product_image' => $product->primaryImage()?->path,
                     'locale' => $locale,
                     'unit_price' => $unitPrice,
+                    // What the shop paid for the unit, snapshotted like the
+                    // selling price: the order's benefit is its total minus
+                    // this, and it must not change when the catalogue is
+                    // repriced.
+                    'unit_cost' => (float) ($product->cost_price ?? 0),
                     'quantity' => $quantity,
                     'subtotal' => $lineTotal,
                 ];

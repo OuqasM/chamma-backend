@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 
 /**
@@ -15,6 +16,11 @@ use Illuminate\Testing\TestResponse;
  */
 class StorefrontFallbackTest extends TestCase
 {
+    // One of these tests asks the API for the store's shipping prices, and the
+    // shop may have priced a city for itself: the answer lives in the
+    // database, so the schema has to be there.
+    use RefreshDatabase;
+
     private string $index;
 
     /** Files created by a test, removed again so nothing is left in public/. */

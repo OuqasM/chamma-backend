@@ -36,6 +36,8 @@ class ProductAvailabilityTest extends TestCase
         $response = $this->postJson('/api/admin/products', array_merge([
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => 10,
         ], $overrides));
 
@@ -169,6 +171,7 @@ class ProductAvailabilityTest extends TestCase
         $this->putJson("/api/admin/products/{$product->id}", [
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
             'stock' => 10,
             'is_available' => false,
             'is_active' => true,

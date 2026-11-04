@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\V1\Admin\SettingController as AdminSettingController;
+use App\Http\Controllers\Api\V1\Admin\ShippingFeeController as AdminShippingFeeController;
 use App\Http\Controllers\Api\V1\Admin\UploadController;
 use App\Http\Controllers\Api\V1\Admin\VisitController as AdminVisitController;
 use App\Http\Controllers\Api\V1\Admin\WaitlistController as AdminWaitlistController;
@@ -143,6 +144,12 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
+
+        // What the shop charges for delivering to a city, and the way back to
+        // the carrier's price. The figure the owner puts in the order form is
+        // kept for that city.
+        Route::get('/shipping/fees', [AdminShippingFeeController::class, 'index'])->name('shipping.fees');
+        Route::delete('/shipping/fees/{city}', [AdminShippingFeeController::class, 'destroy'])->name('shipping.fees.destroy');
 
         // The customers. The list the owner opens to see who the shop sells to,
         // the autocomplete the new-order form uses, and one customer with

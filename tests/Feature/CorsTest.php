@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Fruitcake\Cors\CorsService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -14,6 +15,11 @@ use Tests\TestCase;
  */
 class CorsTest extends TestCase
 {
+    // The store endpoint reads the shop's shipping prices, and the shop may
+    // have priced a city for itself: the answer lives in the database, so the
+    // schema has to be there for the request to be answered at all.
+    use RefreshDatabase;
+
     /**
      * CorsService is resolved once and keeps the configuration it was built
      * with, so changing cors.allowed_origins in a test also has to drop the

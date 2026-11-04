@@ -64,6 +64,12 @@ class OrderResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'shipping_cost' => (float) $this->shipping_cost,
             'total' => (float) $this->total,
+            // What the goods cost the shop, and what the order earned: the
+            // total minus the purchase price of what is in it. Read from the
+            // line's own snapshot, so it is the benefit the order had when it
+            // was placed.
+            'cost' => $this->cost,
+            'benefit' => $this->benefit,
             'currency' => config('chamma.currency.code'),
 
             'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [

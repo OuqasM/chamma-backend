@@ -39,6 +39,25 @@ class Product extends Model
         'is_featured',
     ];
 
+    /**
+     * The purchase price is required, and a product created without one gets
+     * **its selling price**: a zero margin, which understates the benefit
+     * rather than inventing one.
+     *
+     * The panel asks for the real figure — the admin API requires it — so
+     * this only catches the other ways a product comes into being: a script, a
+     * seeder, a test. The column is NOT NULL, and this is what keeps those
+     * paths working rather than failing on a rule they never heard of.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product) {
+            if ($product->cost_price === null) {
+                $product->cost_price = $product->price;
+            }
+        });
+    }
+
     protected $casts = [
         'price' => 'decimal:2',
         'compare_at_price' => 'decimal:2',

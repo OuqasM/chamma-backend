@@ -57,6 +57,8 @@ class WaitlistTest extends TestCase
         $this->postJson('/api/admin/products', array_merge([
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => 10,
         ], $overrides))->assertCreated();
 
@@ -687,6 +689,7 @@ class WaitlistTest extends TestCase
         $this->putJson("/api/admin/products/{$product->id}", [
             'name' => 'Oud Royale',
             'price' => 950,
+            'cost_price' => 570,
             'stock' => 10,
         ])->assertOk();
 

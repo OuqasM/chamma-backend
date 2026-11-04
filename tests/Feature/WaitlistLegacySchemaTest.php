@@ -38,6 +38,8 @@ class WaitlistLegacySchemaTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => 10,
         ])->assertCreated();
 

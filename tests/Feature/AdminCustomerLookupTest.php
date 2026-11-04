@@ -39,6 +39,8 @@ class AdminCustomerLookupTest extends TestCase
         $this->postJson('/api/admin/products', [
             'name' => 'Oud Royale',
             'price' => 890,
+            'cost_price' => 534,
+            'cost_price' => 534,
             'stock' => $stock,
         ])->assertCreated();
 
