@@ -265,6 +265,48 @@ class AdminSalesFiguresTest extends TestCase
         $this->assertSame(355.0, (float) $order->fresh('items')->benefit);
     }
 
+    /**
+     * An order in flight says what it would earn if it were settled now: the
+     * figure the panel puts in the handover field, so the owner hands the
+     * parcel over knowing what the sale is worth — before the sale has
+     * happened and while the order still has no benefit of its own.
+     */
+    public function test_an_order_in_flight_says_what_it_would_earn(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $reference = $this->postJson('/api/fr/checkout', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 rue Ibn Batouta',
+            'payment_method' => 'cod',
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ])->assertCreated()->json('order.reference');
+
+        $id = Order::query()->where('reference', $reference)->firstOrFail()->id;
+
+        // No benefit yet — but 925 the customer pays, 500 of goods, 35 of
+        // parcel: 390 is what the sale would earn.
+        $this->getJson('/api/admin/orders/'.$id)
+            ->assertOk()
+            ->assertJsonPath('order.benefit', null)
+            ->assertJsonPath('order.expected_benefit', 390);
+
+        // And the handover settles at exactly the figure it previewed.
+        $this->patchJson('/api/admin/orders/'.$id.'/status', ['status' => 'delivered'])
+            ->assertOk()
+            ->assertJsonPath('order.benefit', 390)
+            ->assertJsonPath('order.expected_benefit', 390);
+
+        // A benefit the owner sets by hand replaces the figure, not the
+        // arithmetic: the preview still says what the sums make of it.
+        $this->patchJson('/api/admin/orders/'.$id.'/benefit', ['benefit' => 900])
+            ->assertOk()
+            ->assertJsonPath('order.benefit', 900)
+            ->assertJsonPath('order.expected_benefit', 390);
+    }
+
     // ---------------------------------------------------------------
     // The owner knows what the sums do not
     // ---------------------------------------------------------------

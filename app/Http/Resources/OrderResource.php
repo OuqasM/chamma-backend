@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\PaymentService;
+use App\Services\ShippingService;
 use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -28,6 +29,27 @@ class OrderResource extends JsonResource
         // guard is for rows whose phone does not match that shape at all: their
         // link is left out rather than pointing at a wrong number.
         $digits = PhoneNumber::whatsappDigits((string) $this->phone);
+
+        // What the order would earn if it were settled now — the figure the
+        // owner reads as they hand the parcel over, before the sale has
+        // happened. It is the same arithmetic the settlement will do, from
+        // what the order already carries: the total, the goods, the parcel.
+        //
+        // The goods are the settled figure once the sale has happened, and
+        // the line snapshots it was written with before that. The parcel is
+        // the fee the delivery was rectified to, and the city's own price
+        // when the delivery was free — the courier is paid all the same.
+        $goods = $this->status === OrderStatus::Delivered
+            ? (float) $this->cost
+            : (float) $this->items->sum(fn ($item) => (float) $item->unit_cost * (int) $item->quantity);
+
+        $parcel = $this->status === OrderStatus::Delivered
+            ? (float) ($this->courier_cost ?? 0)
+            : ((float) $this->shipping_cost > 0.0
+                ? (float) $this->shipping_cost
+                : app(ShippingService::class)->parcelCost((float) $this->subtotal, (string) $this->city));
+
+        $expectedBenefit = round((float) $this->total - $goods - $parcel, 2);
 
         return [
             'id' => $this->id,
@@ -79,6 +101,10 @@ class OrderResource extends JsonResource
                 : $this->courier_cost,
             'benefit_override' => $this->benefit_override,
             'benefit' => $this->benefit,
+            // What the order would earn if it were settled now: the figure
+            // the panel puts in the handover field, so the owner hands the
+            // parcel over knowing what the sale is worth.
+            'expected_benefit' => $expectedBenefit,
             'currency' => config('chamma.currency.code'),
 
             'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [
