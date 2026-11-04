@@ -146,6 +146,18 @@ class OrderService
             // this order costs to deliver.
             $shippingCost = $shippingCost ?? $this->shipping->cost($subtotal, (string) $customer['city']);
 
+            // The parcel costs what the delivery of **this** order costs.
+            //
+            // The fee the owner rectified is the truth of what the courier was
+            // paid for it — a negotiated rate, a smaller parcel — so it is the
+            // figure the benefit is settled against. Only when the delivery
+            // was given free does the city's own price stand, because the
+            // courier is paid for the parcel all the same and a free delivery
+            // is paid out of the margin.
+            $courierCost = (float) $shippingCost > 0.0
+                ? (float) $shippingCost
+                : $this->shipping->parcelCost((float) $subtotal, (string) $customer['city']);
+
             // The shopper types one name; the columns stay split so the admin
             // list and any future invoice keep their first/last columns.
             [$firstName, $lastName] = $this->splitName((string) $customer['name']);
@@ -169,13 +181,10 @@ class OrderService
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total' => round($subtotal + $shippingCost, 2),
-                // The parcel the courier is paid for, settled when the sale is:
-                // the price the customer was charged for the delivery is one
-                // figure and what the courier costs is another, and a delivery
-                // that was made free is paid out of the margin all the same.
-                'courier_cost' => $status === OrderStatus::Delivered
-                    ? $this->shipping->parcelCost((float) $subtotal, (string) $customer['city'])
-                    : null,
+                // The parcel the courier is paid for, settled when the sale is.
+                // It is the fee the delivery of this order was rectified to,
+                // and the city's own price when the delivery was given free.
+                'courier_cost' => $status === OrderStatus::Delivered ? round($courierCost, 2) : null,
                 'status' => $status,
             ]);
 
@@ -248,14 +257,18 @@ class OrderService
             $item->saveQuietly();
         }
 
-        // The parcel too, once: the courier is paid whether or not the
-        // delivery was charged, so the price of the parcel is settled with the
-        // goods and never re-decided after that.
+        // The parcel too, once: what the delivery of this order was rectified
+        // to — the fee the owner typed, which is what the courier was paid —
+        // and the city's own price when the delivery was given free, because
+        // the courier is paid for the parcel all the same. Never re-decided
+        // after that.
         if ($order->courier_cost === null && $order->city !== null) {
-            $order->courier_cost = $this->shipping->parcelCost(
-                (float) $order->subtotal,
-                (string) $order->city,
-            );
+            $order->courier_cost = (float) $order->shipping_cost > 0.0
+                ? (float) $order->shipping_cost
+                : $this->shipping->parcelCost(
+                    (float) $order->subtotal,
+                    (string) $order->city,
+                );
             $order->saveQuietly();
         }
 

@@ -208,6 +208,63 @@ class AdminSalesFiguresTest extends TestCase
         $this->assertSame(745.0, (float) $order['benefit']);
     }
 
+    /**
+     * The fee the owner rectified is what the parcel costs: they are the one
+     * who knows what the courier was paid for it. The city's default price
+     * stands only when nothing was said — or the delivery was given free.
+     */
+    public function test_a_rectified_fee_is_what_the_parcel_costs(): void
+    {
+        $product = $this->product(price: 890, cost: 500);
+
+        $this->postJson('/api/admin/orders', $this->payload($product, [
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+            'shipping_cost' => 20,
+            'remember_fee' => false,
+        ]))->assertCreated()
+            ->assertJsonPath('order.shipping_cost', 20)
+            // The parcel is the rectified fee, not the city's 35.
+            ->assertJsonPath('order.courier_cost', 20)
+            ->assertJsonPath('order.total', 910)
+            ->assertJsonPath('order.cost', 500)
+            // 910 - 500 - 20: the fee is a pass-through when it is charged.
+            ->assertJsonPath('order.benefit', 390);
+    }
+
+    /**
+     * A basket over the free-delivery threshold ships free to the customer,
+     * and the shop pays the courier for the parcel all the same.
+     */
+    public function test_a_free_shipping_threshold_still_pays_the_parcel(): void
+    {
+        config(['chamma.shipping.free_threshold' => 500]);
+
+        $product = $this->product(price: 890, cost: 500);
+
+        $reference = $this->postJson('/api/fr/checkout', [
+            'name' => 'Amina Benali',
+            'phone' => '0612345678',
+            'city' => 'CASABLANCA',
+            'address' => '12 rue Ibn Batouta',
+            'payment_method' => 'cod',
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ])->assertCreated()->json('order.reference');
+
+        $order = Order::query()->where('reference', $reference)->firstOrFail();
+
+        // The customer pays nothing for the delivery.
+        $this->assertSame(0.0, (float) $order->shipping_cost);
+
+        $this->patchJson('/api/admin/orders/'.$order->id.'/status', ['status' => 'delivered'])
+            ->assertOk()
+            // The courier is paid the city's price anyway.
+            ->assertJsonPath('order.courier_cost', 35)
+            ->assertJsonPath('order.benefit', 355);
+
+        // 890 the customer paid, 500 of goods, 35 of parcel.
+        $this->assertSame(355.0, (float) $order->fresh('items')->benefit);
+    }
+
     // ---------------------------------------------------------------
     // The owner knows what the sums do not
     // ---------------------------------------------------------------
