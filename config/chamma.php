@@ -159,6 +159,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Upload optimization
+    |--------------------------------------------------------------------------
+    |
+    | Raster uploads are downscaled and re-encoded before being stored, so the
+    | storefront never serves a raw phone-camera original (multi-megapixel
+    | files were the main cause of slow page loads). Longest side is capped at
+    | max_dimension pixels; JPEGs are always re-encoded at `quality`.
+    |
+    */
+
+    'uploads' => [
+        'max_dimension' => (int) env('UPLOAD_MAX_DIMENSION', 1920),
+        'quality' => (int) env('UPLOAD_QUALITY', 85),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Artwork typography
     |--------------------------------------------------------------------------
     |

@@ -3,19 +3,26 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\ImageOptimizer;
 use App\Support\Artwork\ArtworkGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class UploadController extends Controller
 {
-    public function __construct(private readonly ArtworkGenerator $artwork) {}
+    public function __construct(
+        private readonly ArtworkGenerator $artwork,
+        private readonly ImageOptimizer $optimizer,
+    ) {}
 
     /**
      * Admin image upload, stored straight in the document root.
+     *
+     * Everything raster is downscaled and re-encoded first: phone cameras
+     * produce multi-megapixel originals that would otherwise ship to the
+     * storefront untouched and drag every page load down.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -23,7 +30,7 @@ class UploadController extends Controller
             'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,svg', 'max:4096'],
         ]);
 
-        $file = $request->file('image');
+        $file = $this->optimizer->optimize($request->file('image'));
         $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
             .'-'.substr(sha1((string) $file->getSize().$file->getClientOriginalName()), 0, 8)
             .'.'.strtolower($file->getClientOriginalExtension());
