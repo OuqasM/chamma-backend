@@ -22,8 +22,8 @@ use App\Support\Shipping\AtlasColisTariffTable;
 use App\Support\Shipping\AtlasColisZoneFile;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class ImportAtlasColisZones extends Command

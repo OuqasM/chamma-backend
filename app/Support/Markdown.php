@@ -159,7 +159,7 @@ final class Markdown
      */
     public static function toPlainText(?string $text): string
     {
-        $html = static::toHtml($text);
+        $html = self::toHtml($text);
 
         // Block boundaries have to become spaces first, otherwise "one" and
         // "two" in adjacent <p> tags come out of strip_tags() glued together.

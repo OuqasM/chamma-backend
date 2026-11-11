@@ -2,6 +2,8 @@
 
 namespace App\Concerns;
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * A product, category or brand is called the same thing in every language: its
  * name is a label, not copy, so translating it just produces three names to keep
@@ -48,7 +50,7 @@ trait HasSingleName
      * it merely echoes the old canonical name (a backfilled placeholder, which must
      * not be left behind as a stale name after a rename).
      *
-     * @param  \Illuminate\Database\Eloquent\Model|null  $existing
+     * @param  Model|null  $existing
      * @param  string|null  $canonical  the canonical name before this update
      */
     protected function resolveName(string $locale, string $name, $existing = null, ?string $canonical = null): string

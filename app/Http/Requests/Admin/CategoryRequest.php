@@ -18,6 +18,7 @@ class CategoryRequest extends FormRequest
     public function rules(): array
     {
         $categoryId = $this->route('category')?->id;
+
         return [
             // Typed once, in English: see App\Concerns\HasSingleName.
             'name' => ['required', 'string', 'max:120'],

@@ -2,11 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Support\StorefrontUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
-use App\Support\StorefrontUrl;
 
 class CategoryResource extends JsonResource
 {

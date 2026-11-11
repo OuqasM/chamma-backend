@@ -17,8 +17,7 @@ final class ProductResourceCollection
 {
     /**
      * @param  array<string, mixed>  $filters
-     * @param  array<string, mixed>  $extra   e.g. ['category' => new CategoryResource($category)]
-     * @return AnonymousResourceCollection
+     * @param  array<string, mixed>  $extra  e.g. ['category' => new CategoryResource($category)]
      */
     public static function make(LengthAwarePaginator $products, array $filters = [], array $extra = []): AnonymousResourceCollection
     {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\CustomerController as AdminCustomerControl
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\V1\Admin\ReviewController as AdminReviewController;
 use App\Http\Controllers\Api\V1\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\V1\Admin\ShippingFeeController as AdminShippingFeeController;
 use App\Http\Controllers\Api\V1\Admin\UploadController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\NavigationController;
 use App\Http\Controllers\Api\V1\OfferController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductFeedController;
+use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SitemapController;
 use App\Http\Controllers\Api\V1\StoreController;
 use App\Http\Controllers\Api\V1\WaitlistController;
@@ -66,6 +68,13 @@ foreach (array_keys(config('chamma.locales')) as $locale) {
 
             Route::get('/home', HomeController::class)->middleware('track')->name('home');
             Route::get('/offers', OfferController::class)->middleware('track')->name('offers');
+
+            // The customer reviews: screenshots of WhatsApp conversations,
+            // shown on their own page and prompted by the floating button.
+            // Locale prefixed like the rest of the storefront, though the
+            // payload is language-free — a screenshot needs no translation.
+            // Tracked, because it is a page a visitor can land on.
+            Route::get('/reviews', ReviewController::class)->middleware('track')->name('reviews');
 
             Route::get('/brands', [BrandController::class, 'index'])->middleware('track')->name('brands.index');
             Route::get('/brands/{slug}', [BrandController::class, 'show'])->middleware('track')->name('brands.show');
@@ -149,6 +158,14 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
+
+        // The customer reviews. Add a screenshot, give it a place in the
+        // order, take it down again. Nothing to flush: the storefront read is
+        // never cached.
+        Route::get('/reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+        Route::post('/reviews', [AdminReviewController::class, 'store'])->name('reviews.store');
+        Route::put('/reviews/{review}', [AdminReviewController::class, 'update'])->name('reviews.update');
+        Route::delete('/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
 
         // What the shop charges for delivering to a city, and the way back to
         // the carrier's price. The figure the owner puts in the order form is

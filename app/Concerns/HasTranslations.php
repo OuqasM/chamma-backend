@@ -5,8 +5,8 @@ namespace App\Concerns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Adds translatable attributes to a model backed by a *translations table.

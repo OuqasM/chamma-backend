@@ -2,8 +2,6 @@
 
 namespace App\Support\Artwork;
 
-use App\Support\Artwork\Palette;
-
 /**
  * Procedural product artwork.
  *
@@ -280,9 +278,8 @@ final class ArtworkGenerator
         ));
     }
 
-
     /* ------------------------------------------------------------------ */
-    /* Scene layers                                                        */
+    /* Scene layers */
     /* ------------------------------------------------------------------ */
 
     /** @param array<string, string> $p */
@@ -437,7 +434,7 @@ final class ArtworkGenerator
     }
 
     /* ------------------------------------------------------------------ */
-    /* Silhouettes                                                         */
+    /* Silhouettes */
     /* ------------------------------------------------------------------ */
 
     private function shape(string $shape, string $id, string $tone, array $options): string
@@ -639,7 +636,7 @@ final class ArtworkGenerator
     }
 
     /* ------------------------------------------------------------------ */
-    /* Plumbing                                                            */
+    /* Plumbing */
     /* ------------------------------------------------------------------ */
 
     private function svg(int $w, int $h, string $inner): string
