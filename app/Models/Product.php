@@ -69,6 +69,10 @@ class Product extends Model
         'rating' => 'decimal:1',
         'rating_count' => 'integer',
         'sales_count' => 'integer',
+        // When the product last came back from out of stock. Written by the
+        // admin write paths on the unavailable -> available edge, never by a
+        // form — so it stays out of `$fillable` and is set with `forceFill`.
+        'restocked_at' => 'datetime',
     ];
 
     public function brand(): BelongsTo

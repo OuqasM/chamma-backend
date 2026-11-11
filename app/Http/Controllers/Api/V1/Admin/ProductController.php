@@ -39,6 +39,11 @@ class ProductController extends Controller
     {
         $query = Product::query()
             ->with(['translations', 'images', 'brand', 'categories', 'variants'])
+            // The bottle the owner just put back on the shelf leads the list,
+            // ahead of whatever was merely touched last. NULL sorts last on a
+            // descending order in both MySQL and SQLite, so products that have
+            // never come back keep the edited-last order beneath them.
+            ->orderByDesc('restocked_at')
             ->orderByDesc('updated_at');
 
         if ($search = trim((string) $request->query('search'))) {
@@ -264,6 +269,12 @@ class ProductController extends Controller
      * once a week would otherwise turn into a weekly email to every customer on
      * the list.
      *
+     * The same edge is what "came back to stock" means to the listings, so the
+     * moment is recorded here before the waitlist is read: a product nobody was
+     * waiting for is still a product that came back, and both the storefront's
+     * default listing and the panel's products list lead with the one that came
+     * back most recently.
+     *
      * Uses `defer` for the same reason the order alert does: this runs after an
      * admin action has already been committed, so a slow or broken SMTP host
      * must not hold up the response the owner is waiting on. The notifier
@@ -275,6 +286,8 @@ class ProductController extends Controller
         if ($wasAvailable || ! $product->in_stock) {
             return;
         }
+
+        $product->forceFill(['restocked_at' => now()])->save();
 
         $waiting = $this->waitlist->pendingFor($product);
 

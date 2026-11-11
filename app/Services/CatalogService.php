@@ -287,7 +287,15 @@ class CatalogService
                 )
                 ->orderBy('products.id'),
             // "Featured" surfaces curated picks first, then best sellers.
+            //
+            // Above both of them sits what the owner just put back on the
+            // shelf: returning a product to stock is the most recent
+            // merchandising decision there is, and the shopper should meet it
+            // first. NULL sorts last on a descending order in both MySQL and
+            // SQLite, so products that have never come back keep the
+            // featured/best-seller order beneath every restock.
             default => $query
+                ->orderByDesc('products.restocked_at')
                 ->orderByDesc('products.is_featured')
                 ->orderByDesc('products.sales_count')
                 ->orderByDesc('products.rating')
