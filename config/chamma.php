@@ -172,6 +172,16 @@ return [
     'uploads' => [
         'max_dimension' => (int) env('UPLOAD_MAX_DIMENSION', 1920),
         'quality' => (int) env('UPLOAD_QUALITY', 85),
+        // A truecolor PNG photograph is an order of magnitude heavier than the
+        // same pixels as JPEG, whatever its dimensions. PNGs at or above this
+        // many bytes are re-encoded as JPEG when an alpha scan finds nothing
+        // to preserve; smaller ones — where the logos live — stay PNG.
+        'png_jpeg_min_bytes' => (int) env('UPLOAD_PNG_JPEG_MIN_BYTES', 200000),
+        // Every raster upload also gets a card-size thumbnail written alongside
+        // (uploads/thumbs/, same name), for grids that display an image at a
+        // fraction of the upload ceiling.
+        'thumb_dimension' => (int) env('UPLOAD_THUMB_DIMENSION', 800),
+        'thumb_quality' => (int) env('UPLOAD_THUMB_QUALITY', 80),
     ],
 
     /*

@@ -88,8 +88,11 @@ class ProductResource extends JsonResource
             // width/height are null unless the file could actually be read,
             // rather than a fixed guess: the storefront reserves space from
             // these, and a wrong ratio shifts the layout on every product page.
+            // `thumb` is the card-size variant the upload pipeline wrote; grids
+            // use it and fall back to `url` when it does not exist yet.
             'image' => $image ? array_filter([
                 'url' => $image->url,
+                'thumb' => $image->thumbUrl(),
                 'alt' => $image->alt ?: $this->name($locale),
                 'dimensions' => $image->dimensions(),
             ], static fn ($v) => $v !== null) : null,

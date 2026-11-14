@@ -16,8 +16,15 @@ use Illuminate\Http\UploadedFile;
  * untouched, and a file GD cannot read or encode is stored as-is so an upload
  * never fails because of a missing codec.
  *
- * File names and extensions are preserved: the path returned to the admin
- * panel does not change.
+ * Big opaque PNGs are the one gap a dimension cap cannot close: a truecolor
+ * PNG photograph is an order of magnitude heavier than the same pixels as
+ * JPEG, however it is resized. Once a sampled alpha scan confirms there is no
+ * transparency to preserve, those are re-encoded as JPEG too — and the upload
+ * endpoint is told the codec changed, so the stored name keeps matching the
+ * bytes. Small PNGs, where logos and their alpha live, stay PNG.
+ *
+ * File names are preserved except for that codec change: the path returned to
+ * the admin panel is always the path the bytes were stored at.
  */
 final class ImageOptimizer
 {
@@ -25,15 +32,25 @@ final class ImageOptimizer
 
     private readonly int $quality;
 
+    /** PNGs at or above this many bytes are candidates for JPEG conversion. */
+    private readonly int $pngJpegMinBytes;
+
+    private readonly int $thumbDimension;
+
+    private readonly int $thumbQuality;
+
     public function __construct()
     {
         $this->maxDimension = max(64, (int) config('chamma.uploads.max_dimension', 1920));
         $this->quality = max(10, min(95, (int) config('chamma.uploads.quality', 85)));
+        $this->pngJpegMinBytes = max(0, (int) config('chamma.uploads.png_jpeg_min_bytes', 200_000));
+        $this->thumbDimension = max(64, (int) config('chamma.uploads.thumb_dimension', 800));
+        $this->thumbQuality = max(10, min(95, (int) config('chamma.uploads.thumb_quality', 80)));
     }
 
     /**
      * @return UploadedFile the same instance when untouched, otherwise one
-     *                      backed by an optimized temp file.
+     *                      backed by an optimized temp file
      */
     public function optimize(UploadedFile $file): UploadedFile
     {
@@ -41,30 +58,123 @@ final class ImageOptimizer
             return $file;
         }
 
-        $temp = $this->rebuild($file->getRealPath());
+        $result = $this->rebuild($file->getRealPath());
 
         // The source temp file is PHP's own upload buffer: it is removed when
         // the request ends, so nothing needs unlinking here.
-        if ($temp === null) {
+        if ($result === null) {
             return $file;
         }
 
+        // A PNG re-encoded as JPEG carries .jpg pixels, so the panel is handed
+        // a .jpg name as well: the stored name derives from the client name,
+        // and a .png suffix over JPEG bytes would serve the wrong type.
+        $name = $file->getClientOriginalName();
+
+        if (strtolower($file->getClientOriginalExtension()) === 'png' && $result['mime'] === 'image/jpeg') {
+            $name = pathinfo($name, PATHINFO_FILENAME).'.jpg';
+        }
+
         return new UploadedFile(
-            $temp,
-            $file->getClientOriginalName(),
-            $file->getClientMimeType(),
+            $result['path'],
+            $name,
+            $result['mime'],
             UPLOAD_ERR_OK,
             true,
         );
     }
 
     /**
-     * Rebuild the source image into a fresh temp file, or null when the file
-     * was left as-is.
+     * Card-size variant of an uploaded raster, written to a fresh temp file.
+     *
+     * Product cards render photographs at a fraction of the upload ceiling —
+     * a 1920px file shown inside a ~300px card is four times the pixels the
+     * browser needs. The thumbnail keeps the source's codec (so alpha PNGs
+     * stay transparent) and is null when the source is already small enough,
+     * is an SVG, or is a codec this GD build cannot read.
      *
      * @return string|null path of the written temp file
      */
-    private function rebuild(string $source): ?string
+    public function thumbnail(UploadedFile $file): ?string
+    {
+        if (! $file->isValid() || strtolower($file->getClientOriginalExtension()) === 'svg') {
+            return null;
+        }
+
+        $source = $file->getRealPath();
+        $info = @getimagesize($source);
+
+        if ($info === false) {
+            return null;
+        }
+
+        $type = $info[2];
+
+        if (! $this->supported($type)) {
+            return null;
+        }
+
+        [$width, $height] = $info;
+
+        if (max($width, $height) <= $this->thumbDimension) {
+            return null;
+        }
+
+        $previousLimit = $this->reserveMemory($width, $height);
+
+        try {
+            $image = $this->decode($source, $type);
+
+            if ($image === null) {
+                return null;
+            }
+
+            $image = $this->rescale($image, $this->thumbDimension);
+
+            $temp = (string) tempnam(sys_get_temp_dir(), 'img-');
+            $written = match ($type) {
+                IMAGETYPE_JPEG => (function () use ($image, $temp): bool {
+                    imageinterlace($image, 1); // progressive scan
+
+                    return imagejpeg($image, $temp, $this->thumbQuality);
+                })(),
+                IMAGETYPE_PNG => imagepng($image, $temp, 6),
+                default => imagewebp($image, $temp, $this->thumbQuality),
+            };
+
+            imagedestroy($image);
+
+            if ($written !== true) {
+                @unlink($temp);
+
+                return null;
+            }
+
+            // The same honesty rule as the main path: never store a "smaller"
+            // variant that is actually bigger than the file it stands for.
+            if (@filesize($temp) >= @filesize($source)) {
+                @unlink($temp);
+
+                return null;
+            }
+
+            return $temp;
+        } finally {
+            if ($previousLimit !== null) {
+                ini_set('memory_limit', $previousLimit);
+            }
+        }
+    }
+
+    /**
+     * Rebuild the source image into a fresh temp file, or null when the file
+     * was left as-is.
+     *
+     * @return array{path: string, mime: string}|null path of the written temp
+     *                                               file and the mime of the
+     *                                               bytes inside it
+     */
+    private function rebuild(string $source): ?array
     {
         $info = @getimagesize($source);
 
@@ -74,16 +184,7 @@ final class ImageOptimizer
 
         $type = $info[2];
 
-        // WebP is only processed when the build of GD carries webp support;
-        // the production image is configured without it, so webp passes
-        // through (it is already a small codec) instead of erroring.
-        $supported = [
-            IMAGETYPE_JPEG => function_exists('imagecreatefromjpeg'),
-            IMAGETYPE_PNG => function_exists('imagecreatefrompng'),
-            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') && function_exists('imagewebp'),
-        ];
-
-        if (! isset($supported[$type]) || $supported[$type] !== true) {
+        if (! $this->supported($type)) {
             return null;
         }
 
@@ -102,19 +203,33 @@ final class ImageOptimizer
                 $image = $this->straighten($source, $image);
             }
 
-            $image = $this->rescale($image);
+            $image = $this->rescale($image, $this->maxDimension);
+
+            // A truecolor PNG photograph is an order of magnitude heavier than
+            // the same pixels as JPEG whatever its dimensions, so once the
+            // alpha scan says there is nothing to preserve, big ones are
+            // re-encoded as JPEG. Small PNGs keep their codec.
+            $output = $type;
+
+            if (
+                $type === IMAGETYPE_PNG
+                && @filesize($source) >= $this->pngJpegMinBytes
+                && ! $this->hasTransparency($image)
+            ) {
+                $output = IMAGETYPE_JPEG;
+            }
 
             // PNGs and WebPs keep their bytes when nothing needed rescaling:
             // re-encoding those loses alpha fidelity for no real gain. JPEGs
             // always pass through the encoder for the predictable weight.
-            if ($type !== IMAGETYPE_JPEG && max(imagesx($image), imagesy($image)) === max($width, $height)) {
+            if ($output !== IMAGETYPE_JPEG && max(imagesx($image), imagesy($image)) === max($width, $height)) {
                 imagedestroy($image);
 
                 return null;
             }
 
             $temp = (string) tempnam(sys_get_temp_dir(), 'img-');
-            $written = match ($type) {
+            $written = match ($output) {
                 IMAGETYPE_JPEG => (function () use ($image, $temp): bool {
                     imageinterlace($image, 1); // progressive scan
 
@@ -141,12 +256,32 @@ final class ImageOptimizer
                 return null;
             }
 
-            return $temp;
+            return [
+                'path' => $temp,
+                // When the codec is unchanged, the source's own mime is the
+                // truth; getimagesize reported it before any pixel was touched.
+                'mime' => $output === IMAGETYPE_JPEG ? 'image/jpeg' : (string) $info['mime'],
+            ];
         } finally {
             if ($previousLimit !== null) {
                 ini_set('memory_limit', $previousLimit);
             }
         }
+    }
+
+    /**
+     * WebP is only processed when the build of GD carries webp support; the
+     * production image is configured without it, so webp passes through (it
+     * is already a small codec) instead of erroring.
+     */
+    private function supported(int $type): bool
+    {
+        return match ($type) {
+            IMAGETYPE_JPEG => function_exists('imagecreatefromjpeg'),
+            IMAGETYPE_PNG => function_exists('imagecreatefrompng'),
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') && function_exists('imagewebp'),
+            default => false,
+        };
     }
 
     /**
@@ -173,6 +308,35 @@ final class ImageOptimizer
         }
 
         return $image;
+    }
+
+    /**
+     * Whether any sampled pixel carries meaningful transparency.
+     *
+     * A full per-pixel walk of a 12-megapixel image costs seconds of PHP, so
+     * the scan samples a ~160x160 grid (edges always included): any region of
+     * transparency a viewer could notice is far larger than one cell. An
+     * antialiased edge also reads as transparent, which errs towards keeping
+     * the PNG — the safe direction for a codec swap.
+     */
+    private function hasTransparency(GdImage $image): bool
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $stepX = max(1, (int) ceil($width / 160));
+        $stepY = max(1, (int) ceil($height / 160));
+
+        for ($y = 0; $y < $height; $y += $stepY) {
+            for ($x = 0; $x < $width; $x += $stepX) {
+                // GD stores alpha in the top 7 bits, 0 opaque to 127 clear.
+                // Anything below ~90% opacity is invisible loss on a JPEG.
+                if (((imagecolorat($image, $x, $y) >> 24) & 0x7F) > 16) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -214,20 +378,21 @@ final class ImageOptimizer
      * Downscale when the longest side exceeds the ceiling. Never upscales: a
      * small logo must stay crisp.
      *
+     * @param  int  $maxSide  the ceiling to enforce (main upload or thumbnail)
      * @return GdImage the same image when within bounds, otherwise the pixels
-     *                 of the original (which is freed here).
+     *                 of the original (which is freed here)
      */
-    private function rescale(GdImage $image): GdImage
+    private function rescale(GdImage $image, int $maxSide): GdImage
     {
         $width = imagesx($image);
         $height = imagesy($image);
         $longest = max($width, $height);
 
-        if ($longest <= $this->maxDimension) {
+        if ($longest <= $maxSide) {
             return $image;
         }
 
-        $factor = $this->maxDimension / $longest;
+        $factor = $maxSide / $longest;
         $targetWidth = (int) max(1, round($width * $factor));
         $targetHeight = (int) max(1, round($height * $factor));
 

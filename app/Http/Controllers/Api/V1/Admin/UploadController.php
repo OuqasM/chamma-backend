@@ -22,7 +22,11 @@ class UploadController extends Controller
      *
      * Everything raster is downscaled and re-encoded first: phone cameras
      * produce multi-megapixel originals that would otherwise ship to the
-     * storefront untouched and drag every page load down.
+     * storefront untouched and drag every page load down. A card-size
+     * thumbnail is written alongside (uploads/thumbs/, same name), because
+     * product grids display an image at a fraction of the upload ceiling.
+     * An uploaded PNG that the optimizer re-encodes as JPEG comes back with
+     * a .jpg client name, so the stored extension matches the bytes.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -37,9 +41,20 @@ class UploadController extends Controller
 
         $path = $file->storeAs('uploads', $name, ['disk' => config('chamma.disk')]);
 
+        $thumbPath = null;
+
+        if (($thumb = $this->optimizer->thumbnail($file)) !== null) {
+            $thumbPath = 'uploads/thumbs/'.$name;
+
+            Storage::disk(config('chamma.disk'))->put($thumbPath, fopen($thumb, 'rb'));
+            @unlink($thumb);
+        }
+
         return response()->json([
             'path' => $path,
             'url' => asset_path($path),
+            'thumb' => $thumbPath,
+            'thumb_url' => $thumbPath ? asset_path($thumbPath) : null,
         ], 201);
     }
 

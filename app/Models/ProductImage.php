@@ -30,6 +30,35 @@ class ProductImage extends Model
     }
 
     /**
+     * URL of the card-size thumbnail written alongside this upload, or null.
+     *
+     * Thumbnails only exist for admin-uploaded rasters ('uploads/…', created
+     * by the upload endpoint and the uploads:optimize backfill); generated
+     * artwork and external URLs have none, and the storefront falls back to
+     * the full-size file there. The existence check is one stat per image per
+     * request — and the catalogue listing it feeds is cached anyway.
+     */
+    public function thumbUrl(): ?string
+    {
+        if (! str_starts_with($this->path, 'uploads/')) {
+            return null;
+        }
+
+        if (! in_array(strtolower(pathinfo($this->path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return null;
+        }
+
+        $thumb = 'uploads/thumbs/'.pathinfo($this->path, PATHINFO_BASENAME);
+        $disk = Storage::disk(config('chamma.disk', 'storefront'));
+
+        if (! $disk->exists($thumb)) {
+            return null;
+        }
+
+        return $disk->url($thumb);
+    }
+
+    /**
      * Real pixel dimensions, read once per file per process.
      *
      * The resource used to state 1000x1250 for every image regardless of the
