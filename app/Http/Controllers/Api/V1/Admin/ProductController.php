@@ -186,8 +186,19 @@ class ProductController extends Controller
 
     public function destroy(Product $product): JsonResponse
     {
-        // Soft delete: order history keeps referring to the product.
-        $product->delete();
+        DB::transaction(function () use ($product) {
+            // The gallery belongs to this product alone: uploaded filenames are
+            // hashed and never shared, and a duplicate starts with no images.
+            // The product itself is soft-deleted so order history keeps
+            // referring to it — but leaving the files behind would keep bytes
+            // (and their thumbnails) the shop can no longer reach.
+            foreach ($product->images()->get() as $image) {
+                $this->images->delete($image->path);
+                $image->delete();
+            }
+
+            $product->delete();
+        });
 
         $this->flushStorefrontCaches();
 

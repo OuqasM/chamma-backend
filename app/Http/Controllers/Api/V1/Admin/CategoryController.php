@@ -104,6 +104,10 @@ class CategoryController extends Controller
             return response()->json(['message' => __('api.errors.category_in_use')], 422);
         }
 
+        // The row owns its picture — an uploaded photo or the generated
+        // triptych in `categories/` — so the file goes with it rather than
+        // staying on the disk with nothing left to show it.
+        $this->images->delete($category->image);
         $category->delete();
 
         // The category is gone from every locale's menu.

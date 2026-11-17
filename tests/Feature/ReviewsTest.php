@@ -157,6 +157,7 @@ class ReviewsTest extends TestCase
     {
         Storage::fake(config('chamma.disk'));
         Storage::disk(config('chamma.disk'))->put('uploads/gone.png', 'gone');
+        Storage::disk(config('chamma.disk'))->put('uploads/thumbs/gone.png', 'thumb');
 
         $review = ReviewScreenshot::create(['image' => 'uploads/gone.png']);
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
@@ -165,5 +166,6 @@ class ReviewsTest extends TestCase
 
         $this->assertDatabaseMissing('review_screenshots', ['id' => $review->id]);
         Storage::disk(config('chamma.disk'))->assertMissing('uploads/gone.png');
+        Storage::disk(config('chamma.disk'))->assertMissing('uploads/thumbs/gone.png');
     }
 }

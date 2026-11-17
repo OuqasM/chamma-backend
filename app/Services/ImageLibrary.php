@@ -105,10 +105,29 @@ class ImageLibrary
         return Storage::disk(config('chamma.disk'))->url($path);
     }
 
+    /**
+     * Remove a stored file, and the card-size copy written beside it.
+     *
+     * The upload endpoint writes every raster twice: `uploads/name` and
+     * `uploads/thumbs/name`. Deleting only the first leaves the thumbnail on
+     * the disk with no row pointing at it — a file the panel can no longer
+     * show and the admin can no longer delete. Every caller that removes an
+     * image goes through here, so the pair cannot drift apart.
+     *
+     * Generated artwork (`categories/…`, `brands/…`) and external URLs have no
+     * thumbnail; the second delete is simply a no-op for them.
+     */
     public function delete(?string $path): void
     {
-        if ($path && ! str_starts_with($path, 'http')) {
-            Storage::disk(config('chamma.disk'))->delete($path);
+        if (! $path || str_starts_with($path, 'http')) {
+            return;
+        }
+
+        $disk = Storage::disk(config('chamma.disk'));
+        $disk->delete($path);
+
+        if (str_starts_with($path, 'uploads/') && ! str_starts_with($path, 'uploads/thumbs/')) {
+            $disk->delete('uploads/thumbs/'.pathinfo($path, PATHINFO_BASENAME));
         }
     }
 
