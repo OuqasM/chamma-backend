@@ -163,6 +163,9 @@ Route::prefix('admin')->name('api.admin.')->group(function () {
         // order, take it down again. Nothing to flush: the storefront read is
         // never cached.
         Route::get('/reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+        // Registered before the single-row route for clarity; the paths cannot
+        // collide, because one is `/reviews` and the other `/reviews/batch`.
+        Route::post('/reviews/batch', [AdminReviewController::class, 'storeMany'])->name('reviews.storeMany');
         Route::post('/reviews', [AdminReviewController::class, 'store'])->name('reviews.store');
         Route::put('/reviews/{review}', [AdminReviewController::class, 'update'])->name('reviews.update');
         Route::delete('/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');

@@ -137,6 +137,37 @@ class ReviewsTest extends TestCase
         $this->assertDatabaseHas('review_screenshots', ['id' => $review->id, 'position' => 5, 'is_active' => false]);
     }
 
+    public function test_several_screenshots_are_added_in_one_batch(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->postJson('/api/admin/reviews/batch', [
+            'images' => ['uploads/one.png', 'uploads/two.png', 'uploads/three.png'],
+            'position' => 4,
+            'is_active' => false,
+        ])->assertCreated()->assertJsonCount(3, 'reviews');
+
+        // One row per screenshot, numbered from the order the owner typed.
+        $this->assertDatabaseHas('review_screenshots', ['image' => 'uploads/one.png', 'position' => 4, 'is_active' => false]);
+        $this->assertDatabaseHas('review_screenshots', ['image' => 'uploads/two.png', 'position' => 5, 'is_active' => false]);
+        $this->assertDatabaseHas('review_screenshots', ['image' => 'uploads/three.png', 'position' => 6, 'is_active' => false]);
+    }
+
+    public function test_a_batch_without_an_order_appends_every_screenshot(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->postJson('/api/admin/reviews/batch', [
+            'images' => ['uploads/one.png', 'uploads/two.png'],
+        ])->assertCreated()->assertJsonCount(2, 'reviews');
+
+        // The column default, so the list appends them in creation order and
+        // a batch cannot steal slot one from the rows already on the shelf.
+        $rows = ReviewScreenshot::query()->orderBy('id')->get();
+        $this->assertSame([0, 0], $rows->pluck('position')->all());
+        $this->assertSame([true, true], $rows->pluck('is_active')->all());
+    }
+
     public function test_swapping_a_screenshot_deletes_the_one_it_replaces(): void
     {
         Storage::fake(config('chamma.disk'));

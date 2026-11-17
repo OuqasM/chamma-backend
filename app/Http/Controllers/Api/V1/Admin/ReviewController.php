@@ -7,7 +7,9 @@ use App\Http\Requests\Admin\ReviewRequest;
 use App\Models\ReviewScreenshot;
 use App\Services\ImageLibrary;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The customer reviews: WhatsApp conversation screenshots the storefront shows
@@ -46,6 +48,53 @@ class ReviewController extends Controller
         $review->refresh();
 
         return response()->json(['review' => new AdminReviewResource($review)], 201);
+    }
+
+    /**
+     * Add a whole selection of screenshots at once.
+     *
+     * A review row holds one screenshot, so "upload several" means "add one
+     * row each". The upload itself is still a call per file — the upload
+     * endpoint owns validation and optimisation — but the rows are written in
+     * one transaction: a batch that fails halfway would leave the owner unable
+     * to tell which screenshots made it and which did not.
+     *
+     * A position, when given, numbers the rows from there in selection order;
+     * left blank, every row takes the column default and the list appends them
+     * in creation order, exactly like the single-row form.
+     */
+    public function storeMany(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'images' => ['required', 'array', 'min:1', 'max:50'],
+            'images.*' => ['required', 'string', 'max:255'],
+            'position' => ['nullable', 'integer', 'min:0', 'max:999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $reviews = DB::transaction(function () use ($data) {
+            $base = $data['position'] ?? null;
+
+            return collect($data['images'])
+                ->values()
+                ->map(function (string $image, int $index) use ($data, $base) {
+                    $attributes = ['image' => $image];
+
+                    if ($base !== null) {
+                        $attributes['position'] = $base + $index;
+                    }
+
+                    if (array_key_exists('is_active', $data) && $data['is_active'] !== null) {
+                        $attributes['is_active'] = (bool) $data['is_active'];
+                    }
+
+                    return ReviewScreenshot::create($attributes);
+                });
+        });
+
+        return response()->json([
+            'reviews' => AdminReviewResource::collection($reviews),
+        ], 201);
     }
 
     public function update(ReviewRequest $request, ReviewScreenshot $review): JsonResponse
